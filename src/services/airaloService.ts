@@ -132,8 +132,8 @@ export class EsimService{
 
       return cleanedPackageData
     } catch (error) {
-      console.error("Error syncing package plans:", error);
-      return undefined; // Explicitly return undefined on error
+      console.error("Error getting package plans:", error);
+      throw new Error(error.message);
     }
   }
 }
