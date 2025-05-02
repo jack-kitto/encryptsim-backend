@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { config } from "dotenv";
-import { AiraloService } from './services/airaloService';
+import { EsimService } from './services/airaloService';
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
 
@@ -16,12 +16,8 @@ if (admin.apps.length === 0){
 }
 const db = admin.database();
 
-const airaloService = new AiraloService()
-const solanaService = new SolanaService();
-
 const app = express()
 app.use(express.json());
-
 
 config()
 
@@ -39,6 +35,14 @@ interface Order {
   qrCode?: string;
   iccid?: string;
   paymentReceived?: boolean;
+}
+
+const solanaService = new SolanaService();
+const esimService = new EsimService();
+try{
+  esimService.connectToFirebase()
+} catch (error) {
+  console.log('Error connecting to firebase:', error);
 }
 
 // User must have payment profile as unique identifier to manage payment and esim subcription
@@ -76,7 +80,6 @@ interface PaymentProfileFirebase {
   orderIds?: string[];
 }
 
-// 1. Receive Order (POST)
 app.post('/order', async (req: Request, res: Response) => {
   const orderId = Math.random().toString(36).substring(7); // Generate a unique order ID
   const { ppPublicKey, quantity, package_id, package_price } = req.body
@@ -103,12 +106,11 @@ app.post('/order', async (req: Request, res: Response) => {
       const { enoughReceived, solBalance } = await solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
       if (enoughReceived) {
         order.paymentReceived = true;
-        const { qrcode, iccid } = await airaloService.placeOrder({ quantity, package_id })
+        const { qrcode, iccid } = await esimService.placeOrder({ quantity, package_id })
         order.qrCode = qrcode;
         order.iccid = iccid;
 
         await db.ref(`/orders/${orderId}`).set(order);
-
         await updatePaymentProfileWithOrder(ppPublicKey, orderId);
 
         // aggregate payment to master wallet
@@ -130,7 +132,7 @@ app.get('/order/:orderId', async (req: Request, res: Response) => {
   const order = orderSnapshot.val() as Order;
 
   if (!orderSnapshot.exists()) {
-    return res.status(404).json({ message: 'Order not found' });
+    res.status(404).json({ message: 'Order not found' });
   }
 
   if (order.paymentReceived && order.iccid) {
@@ -143,6 +145,33 @@ app.get('/order/:orderId', async (req: Request, res: Response) => {
   }
 });
 
+// GET handler to get packages from getPackagePlans()
+app.get('/packages', async (req: Request, res: Response) => {
+  try {
+    const { type, country } = req.query;
+
+    if (!type) {
+      return res.status(400).json({ error: 'Missing required parameters: type' });
+    }
+
+    // Cast type to the expected union type, assuming valid input based on validation above
+    const packageType = type as 'global' | 'local' | 'regional';
+
+    const packages = await esimService.getPackagePlans(packageType, country as string);
+
+    if (packages === undefined) {
+      // This case is handled in the service by returning undefined on error
+      return res.status(500).json({ error: 'Failed to retrieve package plans' });
+    }
+
+    res.json(packages);
+
+  } catch (error: any) {
+    console.error("Error in /packages endpoint:", error);
+    res.status(500).json({ error: "Failed to retrieve package plans" });
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.send("OK");
@@ -152,5 +181,3 @@ const port = parseInt(process.env.PORT || '3000');
 app.listen(port, () => {
   console.log(`listening on port ${port}`);
 });
-
-

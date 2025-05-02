@@ -1,17 +1,12 @@
-import axios from "axios";
 import { config } from "dotenv";
+import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
+import * as admin from "firebase-admin";
 config();
-import admin from "firebase-admin";
 
-
-interface PlaceOrderResponse {  
-    qrcode: string;
-    iccid: string;
-}
-
-interface Sim {
-  iccid: string;
+interface PlaceOrderResponse {
   qrcode: string;
+  activationCode?: string;
+  iccid: string;
 }
 
 export interface OrderDetails {
@@ -19,30 +14,54 @@ export interface OrderDetails {
   package_id: string;
 }
 
-export class AiraloService {
-  private apiUrl: string; // Base URL for Airalo API
-  private accessToken: string; // Store the token here
-  private clientId: string;
-  private clientSecret: string;
-  private tokenUrl: string;
+export interface ExportedPackage {
+  id: number;
+  price: number;
+  day: number;
+  data: number;
+}
+
+export interface ExportedOperator {
+  id: number;
+  title: string;
+  packages: ExportedPackage[];
+}
+
+export interface ExportedAiraloPackage {
+  region: string,
+  operators: ExportedOperator[];
+}
+
+export class EsimService{
   private db: admin.database.Database;
   private firebaseDatabaseUrl: string;
+  private airaloService: AiraloService;
 
   constructor() {
-    this.apiUrl =
-      process.env.AIRALO_API_URL || "https://sandbox-partners-api.airalo.com/v2";
-    this.tokenUrl = `${this.apiUrl}/token`;
-    this.accessToken = "";
-    this.clientId = process.env.AIRALO_CLIENT_ID || "";
-    this.clientSecret = process.env.AIRALO_CLIENT_SECRET || "";
     this.firebaseDatabaseUrl = process.env.FIREBASE_DB_URL || "";
     this.connectToFirebase();
+
+    const clientId = process.env.AIRALO_CLIENT_ID;
+    const clientSecret = process.env.AIRALO_CLIENT_SECRET;
+    const clientUrl = process.env.AIRALO_CLIENT_URL;
+
+    if (!clientId) {
+      throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
+    }
+    if (!clientSecret) {
+      throw new Error("AIRALO_CLIENT_SECRET environment variable is not set.");
+    }
+    this.airaloService = new AiraloService({ 
+      baseUrl: clientUrl,
+      clientId, 
+      clientSecret
+    });
   }
 
-  private connectToFirebase(): void {
-    if (admin.apps.length === 0){
-      const serviceAccount = require("../../esim-a3042-firebase-adminsdk-fbsvc-09dcd371d1.json"); 
-      
+  public connectToFirebase(): void {
+    if (admin.apps.length === 0) {
+      const serviceAccount = require("../../esim-a3042-firebase-adminsdk-fbsvc-09dcd371d1.json");
+
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         databaseURL: this.firebaseDatabaseUrl,
@@ -51,67 +70,70 @@ export class AiraloService {
     this.db = admin.database();
   }
 
-  private async saveAccessToken(token: string): Promise<void> {
-    try {
-      await this.db.ref("/airalo/access_token").set(token);
-    } catch (error: any) {
-      console.error("Error saving access token to Firebase:", error);
-    }
-  }
-
-  async getAccessToken(): Promise<string> {
-    try {
-      const formData = new URLSearchParams();
-      formData.append("client_id", this.clientId);
-      formData.append("client_secret", this.clientSecret);
-      formData.append("grant_type", "client_credentials");
-
-      const snapshot = await this.db.ref("/airalo/access_token").once("value");
-      const storedToken = snapshot.val();
-
-      if (storedToken) {
-        return storedToken;
-      }
-
-      const response = await axios.post(this.tokenUrl, formData, {
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      this.accessToken = response.data.data.access_token;
-      await this.saveAccessToken(this.accessToken);
-      return this.accessToken;
-    } catch (error: any) {
-      console.error("Error getting access token:", error);
-      throw new Error(
-        error.response ? JSON.stringify(error.response.data) : error.message
-      );
-    }
-  }
-
-  async placeOrder(
+  public async placeOrder(
     orderDetails: OrderDetails
   ): Promise<PlaceOrderResponse> {
     try {
-      const token = await this.getAccessToken();
-      const response = await axios.post(
-        `${this.apiUrl}/orders`,
-        orderDetails, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }); 
-      const sim: Sim = response.data.data.sims[0]
+      const response = await this.airaloService.createOrder({
+        package_id: orderDetails.package_id,
+        quantity: orderDetails.quantity,
+        type: "sim",
+      });
+
+      const sim = response.sims[0];
       return {
-        qrcode: sim.qrcode,
-        iccid: sim.iccid
+        qrcode: sim.qr_code,
+        iccid: sim.iccid,
+        activationCode: sim.activation_code,
       };
     } catch (error: any) {
-      console.error('Error placing Airalo async order:', error);
-      throw new Error(error.response ? JSON.stringify(error.response.data) : error.message);
+      console.error("Error placing Airalo order:", error);
+      throw new Error(error.message);
+    }
+  }
+
+  public async getPackagePlans(type: 'global' | 'local' | 'regional', country?: string): Promise<any[]> {
+    try {
+      const packages = await this.airaloService.getPackages({
+        type,
+        country
+      });
+
+      // parsing information
+      let cleanedPackageData = [];
+      for (const item of packages.data) {
+        let newObj = {};
+        const data_json = JSON.stringify(item);
+        const parsed_item = JSON.parse(data_json);
+        newObj["region"] = parsed_item.slug;
+        newObj["operators"] = []
+
+        for (const operator of parsed_item.operators) {
+          const newOperator = {};
+          newOperator["id"] = operator.id;
+          newOperator["title"] = operator.title;
+          newOperator["packages"] = [];
+
+          for (const packageItem of operator.packages) {
+            newOperator["packages"].push({
+              id: packageItem.id,
+              price: packageItem.price,
+              day: packageItem.day,
+              data: packageItem.data
+            });
+          }
+          newObj["operators"].push(newOperator);
+        }
+
+        console.log(newObj)
+        cleanedPackageData.push(newObj);
+      }
+      console.log(cleanedPackageData)
+
+      return cleanedPackageData
+    } catch (error) {
+      console.error("Error syncing package plans:", error);
+      return undefined; // Explicitly return undefined on error
     }
   }
 }
