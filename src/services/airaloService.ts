@@ -94,6 +94,18 @@ export class EsimService{
 
   public async getPackagePlans(type: 'global' | 'local' | 'regional', country?: string): Promise<any[]> {
     try {
+      const cacheKey = `package-plans/${type}/${country || 'global'}`;
+      const cachedData = await this.db.ref(cacheKey).once('value');
+      const cacheEntry = cachedData.val();
+      const now = Date.now();
+      const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
+
+      if (cacheEntry && cacheEntry.timestamp && (now - cacheEntry.timestamp < twentyFourHoursInMillis)) {
+        console.log("Returning cached data for", cacheKey);
+        return cacheEntry.data;
+      }
+
+      console.log("Fetching data from Airalo API for", cacheKey);
       const packages = await this.airaloService.getPackages({
         type,
         country
@@ -129,6 +141,10 @@ export class EsimService{
         cleanedPackageData.push(newObj);
       }
       console.log(cleanedPackageData)
+
+      // Cache the fetched data with a timestamp
+      await this.db.ref(cacheKey).set({ data: cleanedPackageData, timestamp: now });
+      console.log("Cached data to Firebase for", cacheKey);
 
       return cleanedPackageData
     } catch (error) {

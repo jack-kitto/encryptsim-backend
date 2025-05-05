@@ -100,23 +100,55 @@ class EsimService {
     getPackagePlans(type, country) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
+                const cacheKey = `package-plans/${type}/${country || 'global'}`;
+                const cachedData = yield this.db.ref(cacheKey).once('value');
+                const cacheEntry = cachedData.val();
+                const now = Date.now();
+                const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
+                if (cacheEntry && cacheEntry.timestamp && (now - cacheEntry.timestamp < twentyFourHoursInMillis)) {
+                    console.log("Returning cached data for", cacheKey);
+                    return cacheEntry.data;
+                }
+                console.log("Fetching data from Airalo API for", cacheKey);
                 const packages = yield this.airaloService.getPackages({
                     type,
                     country
                 });
-                const exportedPackages = packages.data.map((pkg) => ({
-                    id: pkg.id,
-                    region: pkg.region,
-                    country: pkg.country,
-                    price: pkg.price,
-                    data: pkg.data_amount,
-                    days: pkg.validity_period,
-                }));
-                return exportedPackages;
+                // parsing information
+                let cleanedPackageData = [];
+                for (const item of packages.data) {
+                    let newObj = {};
+                    const data_json = JSON.stringify(item);
+                    const parsed_item = JSON.parse(data_json);
+                    newObj["region"] = parsed_item.slug;
+                    newObj["operators"] = [];
+                    for (const operator of parsed_item.operators) {
+                        const newOperator = {};
+                        newOperator["id"] = operator.id;
+                        newOperator["title"] = operator.title;
+                        newOperator["packages"] = [];
+                        for (const packageItem of operator.packages) {
+                            newOperator["packages"].push({
+                                id: packageItem.id,
+                                price: packageItem.price,
+                                day: packageItem.day,
+                                data: packageItem.data
+                            });
+                        }
+                        newObj["operators"].push(newOperator);
+                    }
+                    console.log(newObj);
+                    cleanedPackageData.push(newObj);
+                }
+                console.log(cleanedPackageData);
+                // Cache the fetched data with a timestamp
+                yield this.db.ref(cacheKey).set({ data: cleanedPackageData, timestamp: now });
+                console.log("Cached data to Firebase for", cacheKey);
+                return cleanedPackageData;
             }
             catch (error) {
-                console.error("Error syncing package plans:", error);
-                return undefined; // Explicitly return undefined on error
+                console.error("Error getting package plans:", error);
+                throw new Error(error.message);
             }
         });
     }

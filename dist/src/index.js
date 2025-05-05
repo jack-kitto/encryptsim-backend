@@ -128,9 +128,9 @@ app.get('/order/:orderId', (req, res) => __awaiter(void 0, void 0, void 0, funct
 // GET handler to get packages from getPackagePlans()
 app.get('/packages', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { type, country } = req.params;
-        if (!type || !country) {
-            return res.status(400).json({ error: 'Missing required parameters: type and country' });
+        const { type, country } = req.query;
+        if (!type) {
+            return res.status(400).json({ error: 'Missing required parameters: type' });
         }
         // Cast type to the expected union type, assuming valid input based on validation above
         const packageType = type;
