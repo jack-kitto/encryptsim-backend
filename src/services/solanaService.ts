@@ -3,7 +3,7 @@ import axios from 'axios';
  
 export class SolanaService {
   private connection: Connection;
-  private masterWallet: Keypair;
+  private masterPublicKey: PublicKey;
 
   constructor() {
     const rpcUrl = process.env.SOLANA_RPC_URL;
@@ -13,6 +13,7 @@ export class SolanaService {
     }
     
     this.connection = new Connection(rpcUrl);
+    this.masterPublicKey = new PublicKey(process.env.MASTER_PUBLIC_KEY || "");
   }
 
   public async createNewSolanaWallet(): Promise<{ publicKey: string, privateKey: string }> {
@@ -62,7 +63,7 @@ export class SolanaService {
     const transaction = new Transaction().add(
       SystemProgram.transfer({
         fromPubkey: sourceWallet.publicKey,
-        toPubkey: this.masterWallet.publicKey,
+        toPubkey: this.masterPublicKey,
         lamports: lamports,
       })
     );

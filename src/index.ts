@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { config } from "dotenv";
-import { EsimService } from './services/airaloService';
+import { SimOrder, EsimService } from './services/airaloService';
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
 
@@ -32,9 +32,10 @@ interface Order {
   quantity: number;
   package_id: string;
   package_price: string;
-  qrCode?: string;
-  iccid?: string;
-  paymentReceived?: boolean;
+  paymentReceived: boolean;
+  paidToMaster: boolean;
+  paymentInSol?: number;
+  sim?: SimOrder
 }
 
 const solanaService = new SolanaService();
@@ -76,10 +77,6 @@ export async function updatePaymentProfileWithOrder(ppPublicKey: string, orderId
   }
 }
 
-interface PaymentProfileFirebase {
-  orderIds?: string[];
-}
-
 app.post('/order', async (req: Request, res: Response) => {
   const orderId = Math.random().toString(36).substring(7); // Generate a unique order ID
   const { ppPublicKey, quantity, package_id, package_price } = req.body
@@ -96,32 +93,66 @@ app.post('/order', async (req: Request, res: Response) => {
     quantity,    
     package_id,    
     package_price,
+    paymentReceived: false,
+    paidToMaster: false,
   };
   await db.ref(`/orders/${orderId}`).set(order);
 
-  // Simulate querying address for payment (in a real app, use a listener)
-  setTimeout(async () => {
+  const paymentCheckDuration = 600000; // 10 minutes
+  const pollingInterval = 10000; // Poll every 10 seconds
+  const startTime = Date.now();
+
+  const paymentCheckInterval = setInterval(async () => {
+    // Check if the total duration has passed
+    if (Date.now() - startTime > paymentCheckDuration) {
+      console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
+      clearInterval(paymentCheckInterval);
+      return;
+    }
+
     try {
       // Check if payment was received
       const { enoughReceived, solBalance } = await solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+      order.paymentInSol = solBalance;
+      console.log(`processing order ${order.orderId}`, enoughReceived, solBalance)
       if (enoughReceived) {
-        order.paymentReceived = true;
-        const { qrcode, iccid } = await esimService.placeOrder({ quantity, package_id })
-        order.qrCode = qrcode;
-        order.iccid = iccid;
+        console.log(`Payment received for order ${orderId}.`);
+        clearInterval(paymentCheckInterval);
 
-        await db.ref(`/orders/${orderId}`).set(order);
-        await updatePaymentProfileWithOrder(ppPublicKey, orderId);
+        // Retrieve the latest order data before updating
+        const latestOrderSnapshot = await db.ref(`/orders/${orderId}`).once('value');
+        const latestOrder = latestOrderSnapshot.val() as Order;
 
-        // aggregate payment to master wallet
-        const privateKey = paymentProfileSnapshot.val().privateKey;
-        await solanaService.aggregatePaymentToMasterWallet(privateKey, solBalance);
+        // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
+        if (!latestOrder.paymentReceived) {
+          latestOrder.paymentReceived = true;
+          const sim = await esimService.placeOrder({ quantity, package_id });
+          latestOrder.sim = sim
 
+          await db.ref(`/orders/${orderId}`).set(latestOrder);
+          await updatePaymentProfileWithOrder(ppPublicKey, orderId);
+        }
+
+        // handle aggregation of payment to master wallet
+        // should handle failed case 
+        if (latestOrder.paymentReceived) {
+          const privateKey = paymentProfileSnapshot.val().privateKey;
+          const sig = await solanaService.aggregatePaymentToMasterWallet(privateKey, parseFloat(order.package_price));
+          if (sig) {
+            latestOrder.paidToMaster = true;
+            await db.ref(`/orders/${orderId}`).set(latestOrder);
+          } else {
+            console.error(`Failed to aggregate payment to master wallet for order ${orderId}.`);
+          }
+        }
       }
     } catch (error) {
-      console.error("Error processing order payment", error)
+      console.error(`Error processing order payment for order ${orderId}:`, error);
+      // Depending on error handling requirements, you might want to stop the interval here
+      clearInterval(paymentCheckInterval)
     }
-  }, 10000);
+  }, pollingInterval);
+
   res.json({ orderId });
 });
 
@@ -135,13 +166,15 @@ app.get('/order/:orderId', async (req: Request, res: Response) => {
     res.status(404).json({ message: 'Order not found' });
   }
 
-  if (order.paymentReceived && order.iccid) {
-    res.json(order);
-  } else {
+  if (order.paymentReceived && order.sim.iccid) {
     res.json({
       orderId: order.orderId,
       paymentReceived: order.paymentReceived,
+      sim: order.sim
     });
+  }
+  else {
+    res.status(204).send(); // Send a 204 status with no body
   }
 });
 

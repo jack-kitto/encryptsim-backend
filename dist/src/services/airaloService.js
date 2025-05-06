@@ -84,11 +84,18 @@ class EsimService {
                     quantity: orderDetails.quantity,
                     type: "sim",
                 });
-                const sim = response.sims[0];
+                console.log('eSim buy response: ', response);
+                const data_json = JSON.stringify(response);
+                const parsed_sim = JSON.parse(data_json);
+                const sims = parsed_sim.data.sims;
+                const sim = sims[0];
+                console.log('received sims: ', sims);
                 return {
-                    qrcode: sim.qr_code,
                     iccid: sim.iccid,
-                    activationCode: sim.activation_code,
+                    qrcode: sim.qrcode,
+                    qrcode_url: sim.qrcode_url,
+                    created_at: sim.created_at,
+                    direct_apple_installation_url: sim.direct_apple_installation_url
                 };
             }
             catch (error) {

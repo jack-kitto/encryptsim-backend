@@ -3,10 +3,12 @@ import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
 import * as admin from "firebase-admin";
 config();
 
-interface PlaceOrderResponse {
-  qrcode: string;
-  activationCode?: string;
+export interface SimOrder {
   iccid: string;
+  qrcode: string;
+  qrcode_url: string;
+  created_at: string;
+  direct_apple_installation_url?: string;
 }
 
 export interface OrderDetails {
@@ -72,7 +74,7 @@ export class EsimService{
 
   public async placeOrder(
     orderDetails: OrderDetails
-  ): Promise<PlaceOrderResponse> {
+  ): Promise<SimOrder> {
     try {
       const response = await this.airaloService.createOrder({
         package_id: orderDetails.package_id,
@@ -80,11 +82,19 @@ export class EsimService{
         type: "sim",
       });
 
-      const sim = response.sims[0];
+      console.log('eSim buy response: ', response)
+      const data_json = JSON.stringify(response);
+      const parsed_sim = JSON.parse(data_json);
+      const sims = parsed_sim.data.sims
+      const sim = sims[0]
+      console.log('received sims: ', sims)
+
       return {
-        qrcode: sim.qr_code,
         iccid: sim.iccid,
-        activationCode: sim.activation_code,
+        qrcode: sim.qrcode,
+        qrcode_url: sim.qrcode_url,
+        created_at: sim.created_at,
+        direct_apple_installation_url: sim.direct_apple_installation_url
       };
     } catch (error: any) {
       console.error("Error placing Airalo order:", error);

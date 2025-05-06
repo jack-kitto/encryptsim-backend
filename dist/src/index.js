@@ -82,29 +82,52 @@ app.post('/order', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         quantity,
         package_id,
         package_price,
+        paymentReceived: false,
     };
     yield db.ref(`/orders/${orderId}`).set(order);
-    // Simulate querying address for payment (in a real app, use a listener)
-    setTimeout(() => __awaiter(void 0, void 0, void 0, function* () {
+    const paymentCheckDuration = 600000; // 10 minutes
+    const pollingInterval = 10000; // Poll every 10 seconds
+    const startTime = Date.now();
+    const paymentCheckInterval = setInterval(() => __awaiter(void 0, void 0, void 0, function* () {
+        // Check if the total duration has passed
+        if (Date.now() - startTime > paymentCheckDuration) {
+            console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
+            clearInterval(paymentCheckInterval);
+            return;
+        }
         try {
             // Check if payment was received
             const { enoughReceived, solBalance } = yield solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+            console.log(`processing order ${order.orderId}`, enoughReceived, solBalance);
             if (enoughReceived) {
-                order.paymentReceived = true;
-                const { qrcode, iccid } = yield esimService.placeOrder({ quantity, package_id });
-                order.qrCode = qrcode;
-                order.iccid = iccid;
-                yield db.ref(`/orders/${orderId}`).set(order);
-                yield updatePaymentProfileWithOrder(ppPublicKey, orderId);
-                // aggregate payment to master wallet
-                const privateKey = paymentProfileSnapshot.val().privateKey;
-                yield solanaService.aggregatePaymentToMasterWallet(privateKey, solBalance);
+                console.log(`Payment received for order ${orderId}.`);
+                clearInterval(paymentCheckInterval);
+                // Retrieve the latest order data before updating
+                const latestOrderSnapshot = yield db.ref(`/orders/${orderId}`).once('value');
+                const latestOrder = latestOrderSnapshot.val();
+                // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
+                if (!latestOrder.paymentReceived) {
+                    // save payment status to avoid buying multiple Airalo packages
+                    latestOrder.paymentReceived = true;
+                    yield db.ref(`/orders/${orderId}`).set(latestOrder);
+                    const sim = yield esimService.placeOrder({ quantity, package_id });
+                    latestOrder.sim = sim;
+                    yield db.ref(`/orders/${orderId}`).set(latestOrder);
+                    yield updatePaymentProfileWithOrder(ppPublicKey, orderId);
+                    // aggregate payment to master wallet
+                    // Re-fetch private key in case payment profile was updated
+                    const latestPaymentProfileSnapshot = yield db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+                    const privateKey = latestPaymentProfileSnapshot.val().privateKey;
+                    yield solanaService.aggregatePaymentToMasterWallet(privateKey, solBalance);
+                }
             }
         }
         catch (error) {
-            console.error("Error processing order payment", error);
+            console.error(`Error processing order payment for order ${orderId}:`, error);
+            // Depending on error handling requirements, you might want to stop the interval here
+            clearInterval(paymentCheckInterval);
         }
-    }), 10000);
+    }), pollingInterval);
     res.json({ orderId });
 }));
 // to be routinely called by front-end to check if order has been fulfilled
@@ -115,14 +138,15 @@ app.get('/order/:orderId', (req, res) => __awaiter(void 0, void 0, void 0, funct
     if (!orderSnapshot.exists()) {
         res.status(404).json({ message: 'Order not found' });
     }
-    if (order.paymentReceived && order.iccid) {
-        res.json(order);
-    }
-    else {
+    if (order.paymentReceived && order.sim.iccid) {
         res.json({
             orderId: order.orderId,
             paymentReceived: order.paymentReceived,
+            sim: order.sim
         });
+    }
+    else {
+        res.status(204).send(); // Send a 204 status with no body
     }
 }));
 // GET handler to get packages from getPackagePlans()
