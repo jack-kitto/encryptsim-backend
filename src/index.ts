@@ -78,7 +78,7 @@ export async function updatePaymentProfileWithOrder(ppPublicKey: string, orderId
 }
 
 app.post('/order', async (req: Request, res: Response) => {
-  const orderId = Math.random().toString(36).substring(7); // Generate a unique order ID
+  const orderId = Math.random().toString(36).substring(21); // Generate a unique order ID containing 20 characters
   const { ppPublicKey, quantity, package_id, package_price } = req.body
 
   // Check if the payment profile exists
