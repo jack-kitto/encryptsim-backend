@@ -8,9 +8,12 @@ config()
 async function initializeFirebase(): Promise<admin.database.Database> {
   // Initialize Firebase Admin SDK
   const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL || "";
+  console.log(firebaseDatabaseUrl)
   if (admin.apps.length === 0){
     // Fetch the service account using the async function
     const serviceAccount = await accessSecretVersion('firebase-admin'); // Use the correct secret name
+
+    console.log(serviceAccount)
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
