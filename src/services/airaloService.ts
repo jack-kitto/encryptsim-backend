@@ -16,6 +16,36 @@ export interface OrderDetails {
   package_id: string;
 }
 
+// Assumed interface for parameters to create a top-up order
+export interface AiraloTopupOrderParams {
+  iccid: string;
+  package_id: string;
+  description?: string;
+}
+
+// Assumed interface for the response of a top-up order
+export interface AiraloTopupOrder {
+  id: string;
+  package_id: string;
+  currency: string;
+  quantity: number; 
+  description: string;
+  esim_type: string;
+  data: string;
+  price: number;
+  net_price: number;
+}
+
+// Assumed interface for an available SIM top-up package
+export interface AiraloSIMTopup {
+  id: string; // package_id for the top-up
+  title: string;
+  data_amount: string; // e.g., "1GB", "5GB"
+  validity_days: number; // e.g., 7, 30
+  price: number;
+  currency: string; // e.g., "USD"
+}
+
 export interface ExportedPackage {
   id: number;
   price: number;
@@ -98,6 +128,87 @@ export class EsimService{
       };
     } catch (error: any) {
       console.error("Error placing Airalo order:", error);
+      throw new Error(error.message);
+    }
+  }
+  // : Promise<AiraloOrder>
+ public async createTopupOrder(orderData: AiraloTopupOrderParams): Promise<AiraloTopupOrder> {
+    try {
+
+      const params: any = {
+        package_id: orderData.package_id,
+        iccid: orderData.iccid, 
+        description: orderData.description,
+      }
+      console.log("param: ", params);
+      const response = await this.airaloService.createTopupOrder(params);
+
+      console.log('eSim top-up order response: ', response);
+      const data_json = JSON.stringify(response);
+      const parsed_order = JSON.parse(data_json);
+
+      console.log("topupOrder: ", parsed_order);
+    
+ 
+      return {
+          id: parsed_order.data.id,
+          package_id: parsed_order.data.package_id,
+          currency: parsed_order.data.currency,
+          quantity: parsed_order.data.quantity,
+          description: parsed_order.data.description,
+          esim_type: parsed_order.data.esim_type,
+          data: parsed_order.data.data,
+          price: parsed_order.data.price,
+          net_price: parsed_order.data.net_price,     // Adjust path as per actual SDK response
+      };
+    } catch (error: any) {
+      console.error("Error placing Airalo top-up order:", error);
+      throw new Error(error.message);
+    }
+  }
+  // : Promise<AiraloSIMTopup[]>
+  public async getSIMTopups(iccid: string) : Promise<AiraloSIMTopup[]> {
+    try {
+      const cacheKey = `topups/${iccid}`;
+      const cachedData = await this.db.ref(cacheKey).once('value');
+      const cacheEntry = cachedData.val();
+      const now = Date.now();
+      const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
+
+      if (cacheEntry && cacheEntry.timestamp && (now - cacheEntry.timestamp < twentyFourHoursInMillis)) {
+        console.log("Returning cached data for", cacheKey);
+        return cacheEntry.data;
+      }
+
+      console.log("Fetching data from Airalo API for", cacheKey);
+      const topups = await this.airaloService.getSIMTopups(iccid);
+      const data_json = JSON.stringify(topups);
+      const parsed_item = JSON.parse(data_json);
+
+      let cleanedTopupData = [];
+      for (const item of parsed_item.data) {
+        const newObj = {};
+        newObj["id"] = item.id;
+        newObj["price"] = item.price;
+        newObj["amount"] = item.amount;
+        newObj["day"] = item.day;
+        newObj["is_unlimited"] = item.is_unlimited;
+        newObj["title"] = item.title;
+        newObj["data"] = item.data;
+        newObj["net_price"] = item.net_price;
+
+        cleanedTopupData.push(newObj);
+      }
+      console.log("topups: ", cleanedTopupData);
+
+      await this.db.ref(cacheKey).set({ data: cleanedTopupData, timestamp: now });
+      console.log("Cached data to Firebase for", cacheKey);
+
+      return cleanedTopupData;
+
+      
+    } catch (error: any) {
+      console.error(`Error getting SIM top-ups for ICCID ${iccid}:`, error);
       throw new Error(error.message);
     }
   }

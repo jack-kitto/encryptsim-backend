@@ -30,6 +30,7 @@ export class SolanaService {
 
     const publicKey = new PublicKey(address);
     const balance = await this.connection.getBalance(publicKey);
+    console.log("balance: ", balance);
     const solBalance = balance / LAMPORTS_PER_SOL;
 
     // Fetch SOL price from Coingecko

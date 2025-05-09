@@ -104,6 +104,80 @@ class EsimService {
             }
         });
     }
+    // : Promise<AiraloOrder>
+    createTopupOrder(orderData) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const params = {
+                    package_id: orderData.package_id,
+                    iccid: orderData.iccid,
+                    description: orderData.description,
+                };
+                console.log("param: ", params);
+                const response = yield this.airaloService.createTopupOrder(params);
+                console.log('eSim top-up order response: ', response);
+                const data_json = JSON.stringify(response);
+                const parsed_order = JSON.parse(data_json);
+                console.log("topupOrder: ", parsed_order);
+                return {
+                    id: parsed_order.data.id,
+                    package_id: parsed_order.data.package_id,
+                    currency: parsed_order.data.currency,
+                    quantity: parsed_order.data.quantity,
+                    description: parsed_order.data.description,
+                    esim_type: parsed_order.data.esim_type,
+                    data: parsed_order.data.data,
+                    price: parsed_order.data.price,
+                    net_price: parsed_order.data.net_price, // Adjust path as per actual SDK response
+                };
+            }
+            catch (error) {
+                console.error("Error placing Airalo top-up order:", error);
+                throw new Error(error.message);
+            }
+        });
+    }
+    // : Promise<AiraloSIMTopup[]>
+    getSIMTopups(iccid) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const cacheKey = `topups/${iccid}`;
+                const cachedData = yield this.db.ref(cacheKey).once('value');
+                const cacheEntry = cachedData.val();
+                const now = Date.now();
+                const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
+                if (cacheEntry && cacheEntry.timestamp && (now - cacheEntry.timestamp < twentyFourHoursInMillis)) {
+                    console.log("Returning cached data for", cacheKey);
+                    return cacheEntry.data;
+                }
+                console.log("Fetching data from Airalo API for", cacheKey);
+                const topups = yield this.airaloService.getSIMTopups(iccid);
+                const data_json = JSON.stringify(topups);
+                const parsed_item = JSON.parse(data_json);
+                let cleanedTopupData = [];
+                for (const item of parsed_item.data) {
+                    const newObj = {};
+                    newObj["id"] = item.id;
+                    newObj["price"] = item.price;
+                    newObj["amount"] = item.amount;
+                    newObj["day"] = item.day;
+                    newObj["is_unlimited"] = item.is_unlimited;
+                    newObj["title"] = item.title;
+                    newObj["data"] = item.data;
+                    newObj["net_price"] = item.net_price;
+                    cleanedTopupData.push(newObj);
+                }
+                console.log("topups: ", cleanedTopupData);
+                yield this.db.ref(cacheKey).set({ data: cleanedTopupData, timestamp: now });
+                console.log("Cached data to Firebase for", cacheKey);
+                return cleanedTopupData;
+            }
+            catch (error) {
+                console.error(`Error getting SIM top-ups for ICCID ${iccid}:`, error);
+                throw new Error(error.message);
+            }
+        });
+    }
     getPackagePlans(type, country) {
         return __awaiter(this, void 0, void 0, function* () {
             try {

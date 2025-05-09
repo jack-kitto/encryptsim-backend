@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updatePaymentProfileWithOrder = updatePaymentProfileWithOrder;
 const express_1 = __importDefault(require("express"));
 const dotenv_1 = require("dotenv");
-const airaloService_1 = require("./services/airaloService");
+const airaloService_1 = require("./services/airaloService"); // Added AiraloTopupOrderParams, AiraloOrder, AiraloSIMTopup
 const solanaService_1 = require("./services/solanaService");
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
 // Initialize Firebase Admin SDK
@@ -69,7 +69,7 @@ function updatePaymentProfileWithOrder(ppPublicKey, orderId) {
     });
 }
 app.post('/order', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const orderId = Math.random().toString(36).substring(7); // Generate a unique order ID
+    const orderId = Math.random().toString(36).substring(21);
     const { ppPublicKey, quantity, package_id, package_price } = req.body;
     // Check if the payment profile exists
     const paymentProfileSnapshot = yield db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
@@ -83,10 +83,11 @@ app.post('/order', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         package_id,
         package_price,
         paymentReceived: false,
+        paidToMaster: false,
     };
-    yield db.ref(`/orders/${orderId}`).set(order);
+    yield db.ref(`/topup_orders/${orderId}`).set(order);
     const paymentCheckDuration = 600000; // 10 minutes
-    const pollingInterval = 10000; // Poll every 10 seconds
+    const pollingInterval = 30000; // Poll every 10 seconds
     const startTime = Date.now();
     const paymentCheckInterval = setInterval(() => __awaiter(void 0, void 0, void 0, function* () {
         // Check if the total duration has passed
@@ -98,6 +99,7 @@ app.post('/order', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         try {
             // Check if payment was received
             const { enoughReceived, solBalance } = yield solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+            order.paymentInSol = solBalance;
             console.log(`processing order ${order.orderId}`, enoughReceived, solBalance);
             if (enoughReceived) {
                 console.log(`Payment received for order ${orderId}.`);
@@ -107,18 +109,24 @@ app.post('/order', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 const latestOrder = latestOrderSnapshot.val();
                 // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
                 if (!latestOrder.paymentReceived) {
-                    // save payment status to avoid buying multiple Airalo packages
                     latestOrder.paymentReceived = true;
-                    yield db.ref(`/orders/${orderId}`).set(latestOrder);
                     const sim = yield esimService.placeOrder({ quantity, package_id });
                     latestOrder.sim = sim;
                     yield db.ref(`/orders/${orderId}`).set(latestOrder);
                     yield updatePaymentProfileWithOrder(ppPublicKey, orderId);
-                    // aggregate payment to master wallet
-                    // Re-fetch private key in case payment profile was updated
-                    const latestPaymentProfileSnapshot = yield db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
-                    const privateKey = latestPaymentProfileSnapshot.val().privateKey;
-                    yield solanaService.aggregatePaymentToMasterWallet(privateKey, solBalance);
+                }
+                // handle aggregation of payment to master wallet
+                // should handle failed case 
+                if (latestOrder.paymentReceived) {
+                    const privateKey = paymentProfileSnapshot.val().privateKey;
+                    const sig = yield solanaService.aggregatePaymentToMasterWallet(privateKey, parseFloat(order.package_price));
+                    if (sig) {
+                        latestOrder.paidToMaster = true;
+                        yield db.ref(`/orders/${orderId}`).set(latestOrder);
+                    }
+                    else {
+                        console.error(`Failed to aggregate payment to master wallet for order ${orderId}.`);
+                    }
                 }
             }
         }
@@ -129,6 +137,113 @@ app.post('/order', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
     }), pollingInterval);
     res.json({ orderId });
+}));
+// Endpoint to create a new top-up order
+app.post('/topup', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const orderId = Math.random().toString(36).substring(21);
+        const { ppPublicKey, package_id, iccid, package_price } = req.body;
+        const paymentProfileSnapshot = yield db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+        if (!paymentProfileSnapshot.exists()) {
+            return res.status(400).json({ error: 'payment profile not found' });
+        }
+        if (!package_id || iccid == undefined) {
+            return res.status(400).json({ error: 'Missing required parameters: package_id, quantity, iccid' });
+        }
+        const order = {
+            orderId,
+            ppPublicKey,
+            iccid,
+            quantity: 1,
+            package_id,
+            package_price,
+            paymentReceived: false,
+            paidToMaster: false,
+        };
+        yield db.ref(`/topup_orders/${orderId}`).set(order);
+        const paymentCheckDuration = 600000; // 10 minutes
+        const pollingInterval = 30000; // Poll every 10 seconds
+        const startTime = Date.now();
+        const paymentCheckInterval = setInterval(() => __awaiter(void 0, void 0, void 0, function* () {
+            // Check if the total duration has passed
+            if (Date.now() - startTime > paymentCheckDuration) {
+                console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
+                clearInterval(paymentCheckInterval);
+                return;
+            }
+            try {
+                // Check if payment was received
+                const { enoughReceived, solBalance } = yield solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+                order.paymentInSol = solBalance;
+                console.log(`processing order ${order.orderId}`, enoughReceived, solBalance);
+                if (enoughReceived) {
+                    console.log(`Payment received for order ${orderId}.`);
+                    clearInterval(paymentCheckInterval);
+                    // Retrieve the latest order data before updating
+                    const latestOrderSnapshot = yield db.ref(`/topup_orders/${orderId}`).once('value');
+                    const latestOrder = latestOrderSnapshot.val();
+                    // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
+                    if (!latestOrder.paymentReceived) {
+                        latestOrder.paymentReceived = true;
+                        // const topup = await esimService.createTopupOrder({ iccid, package_id, description: "" });
+                        // latestOrder.topup = topup;
+                        yield db.ref(`/topup_orders/${orderId}`).set(latestOrder);
+                        yield updatePaymentProfileWithOrder(ppPublicKey, orderId);
+                    }
+                    if (latestOrder.paymentReceived) {
+                        const privateKey = paymentProfileSnapshot.val().privateKey;
+                        const sig = yield solanaService.aggregatePaymentToMasterWallet(privateKey, parseFloat(order.package_price));
+                        if (sig) {
+                            latestOrder.paidToMaster = true;
+                            yield db.ref(`/orders/${orderId}`).set(latestOrder);
+                        }
+                        else {
+                            console.error(`Failed to aggregate payment to master wallet for order ${orderId}.`);
+                        }
+                    }
+                }
+            }
+            catch (error) {
+                console.error(`Error processing order payment for order ${orderId}:`, error);
+                // Depending on error handling requirements, you might want to stop the interval here
+                clearInterval(paymentCheckInterval);
+            }
+        }), pollingInterval);
+        // const topupOrderParams: AiraloTopupOrderParams = {
+        //   package_id,
+        //   iccid,
+        //   description
+        // };
+        // const orderResult: AiraloOrder = await esimService.createTopupOrder(topupOrderParams);
+        // res.status(201).json(orderResult);
+    }
+    catch (error) {
+        console.error("Error creating top-up order:", error);
+        // Check if the error has a message property for a more informative response
+        const errorMessage = error.message || "Failed to create top-up order";
+        res.status(500).json({ error: errorMessage });
+    }
+}));
+// Endpoint to get available top-up packages for a SIM
+app.get('/sim/:iccid/topups', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { iccid } = req.params;
+        if (!iccid) {
+            return res.status(400).json({ error: 'Missing required parameter: iccid' });
+        }
+        const topups = yield esimService.getSIMTopups(iccid);
+        if (!topups) {
+            // This typically means the service encountered an error it couldn't recover from,
+            // or the method in the service is designed to return undefined in some error cases.
+            return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
+        }
+        res.json(topups);
+    }
+    catch (error) {
+        console.error(`Error getting top-ups for ICCID ${req.params.iccid}:`, error);
+        const errorMessage = error.message || "Failed to retrieve SIM top-ups";
+        res.status(500).json({ error: errorMessage });
+    }
 }));
 // to be routinely called by front-end to check if order has been fulfilled
 app.get('/order/:orderId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
