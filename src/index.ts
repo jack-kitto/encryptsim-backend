@@ -4,26 +4,10 @@ import { SimOrder, EsimService, AiraloTopupOrderParams, AiraloTopupOrder, Airalo
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
 import { AiraloError } from '@montarist/airalo-api';
-import { accessSecretJSON } from './secrets'; // Import the accessSecretVersion function
+import { initializeFirebase } from './helper';
 
 // Declare db outside the async function so it's accessible later
 let db: admin.database.Database;
-
-async function initializeFirebase() {
-  // Initialize Firebase Admin SDK
-  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL
-  if (admin.apps.length === 0){
-    // Fetch the service account using the async function
-    const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
-      databaseURL: firebaseDatabaseUrl,
-    });
-  }
-  db = admin.database(); // Assign the initialized database to the global variable
-}
-
 
 const app = express()
 app.use(express.json());
@@ -80,7 +64,7 @@ export async function updatePaymentProfileWithOrder(ppPublicKey: string, orderId
 }
 
 async function main() {
-  await initializeFirebase(); // Wait for Firebase to be initialized
+  db = await initializeFirebase(); // Wait for Firebase to be initialized
 
   // Now that Firebase is initialized, initialize services that depend on it.
   esimService = new EsimService(db); // Initialize EsimService with the db instance

@@ -1,6 +1,6 @@
 import { EsimService } from "../src/services/airaloService";
 import admin from "firebase-admin";
-import { accessSecretJSON } from '../src/secrets';
+import { accessSecretJSON } from '../src/helper';
 import { config } from "dotenv";
 
 config()

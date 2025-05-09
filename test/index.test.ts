@@ -1,7 +1,7 @@
 import admin from 'firebase-admin';
 import { updatePaymentProfileWithOrder } from '../src/index'; // Assuming you are testing updatePaymentProfileWithOrder
 import * as dotenv from 'dotenv';
-import { accessSecretJSON } from '../src/secrets'
+import { accessSecretJSON } from '../src/helper'
 
 dotenv.config();
 

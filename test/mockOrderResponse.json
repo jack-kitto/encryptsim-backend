@@ -1,0 +1,58 @@
+{
+  "data": {
+    "id": 638534,
+    "code": "20250509-638534",
+    "currency": "USD",
+    "package_id": "asialink-3days-500mb",
+    "quantity": 1,
+    "type": "sim",
+    "description": null,
+    "esim_type": "Prepaid",
+    "validity": 3,
+    "package": "Asialink-500 MB - 3 Days",
+    "data": "500 MB",
+    "price": 1.53,
+    "created_at": "2025-05-09 09:35:17",
+    "manual_installation": "<p><b>eSIM name:</b> Asialink</p><p><b>Coverage: </b>Bangladesh, Cambodia, China, Hong Kong(China), India, Indonesia, Japan, Laos, Macau, Malaysia, Pakistan, Philippines, Singapore, South Korea, Sri Lanka, Taiwan, Thailand, and Vietnam.</p><p><b>To activate the eSIM by scanning the QR code on your eSIM-capable device you need to print or display this QR code on another device:</b></p><ol><li>Settings > Cellular/Mobile > Add Cellular/Mobile Plan.</li><li>Scan QR code.</li><li>Confirm eSIM plan details.</li><li>Label the eSIM.</li></ol><p><b>To access Data:</b></p><ol><li>Enable data roaming.</li></ol>",
+    "qrcode_installation": "<p><b>eSIM name:</b> Asialink<br></p><p><b>Coverage: </b><span id=\"docs-internal-guid-d6fab335-7fff-7be0-f0ab-c881defac5a4\">Bangladesh, Cambodia, China, Hong Kong(China), India, Indonesia, Japan, Laos, Macau, Malaysia, Pakistan, Philippines, Singapore, South Korea, Sri Lanka, Taiwan, Thailand, and Vietnam.</span></p><p><b>To activate the eSIM by scanning the QR code on your eSIM-capable device you need to print or display this QR code on another device:</b></p><ol><li>Settings > Cellular/Mobile > Add Cellular/Mobile Plan.</li><li>Scan QR code.</li><li>Confirm eSIM plan details.</li><li>Label the eSIM.</li></ol><p><b>To access Data:</b></p><ol><li>Enable data roaming.</li></ol>",
+    "installation_guides": {
+      "en": "https://www.airalo.com/help/getting-started-with-airalo"
+    },
+    "text": null,
+    "voice": null,
+    "net_price": 1.53,
+    "brand_settings_name": "encryptSIM",
+    "sims": [
+      {
+        "id": 769370,
+        "created_at": "2025-05-09 09:35:18",
+        "iccid": "89852351124630223866",
+        "lpa": "wbg.prod.ondemandconnectivity.com",
+        "imsis": null,
+        "matching_id": "MQL4FK6WLWOMHE80",
+        "qrcode": "LPA:1$wbg.prod.ondemandconnectivity.com$MQL4FK6WLWOMHE80",
+        "qrcode_url": "https://www.airalo.com/qr?expires=1833096917&id=44404260&signature=8a0a50f227286e14858e7cfe7492a7c034bb6cc6d33fe46905ab3169f387c0d8",
+        "airalo_code": null,
+        "apn_type": "manual",
+        "apn_value": "wbdata",
+        "is_roaming": true,
+        "confirmation_code": null,
+        "apn": {
+          "ios": {
+            "apn_type": "automatic",
+            "apn_value": "wbdata"
+          },
+          "android": {
+            "apn_type": "manual",
+            "apn_value": "wbdata"
+          }
+        },
+        "msisdn": null,
+        "direct_apple_installation_url": "https://esimsetup.apple.com/esim_qrcode_provisioning?carddata=LPA:1$wbg.prod.ondemandconnectivity.com$MQL4FK6WLWOMHE80"
+      }
+    ]
+  },
+  "meta": {
+    "message": "success"
+  }
+}

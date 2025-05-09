@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
 import * as admin from "firebase-admin";
-import { accessSecretValue } from "../secrets";
+import { accessSecretValue } from "../helper";
 config();
 
 export interface SimOrder {
@@ -88,8 +88,6 @@ export class EsimService{
       clientSecret
     });
   }
-
-  // Removed the connectToFirebase method
 
   public async placeOrder(
     orderDetails: OrderDetails
