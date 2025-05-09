@@ -17,30 +17,14 @@ const express_1 = __importDefault(require("express"));
 const dotenv_1 = require("dotenv");
 const airaloService_1 = require("./services/airaloService"); // Added AiraloTopupOrderParams, AiraloOrder, AiraloSIMTopup
 const solanaService_1 = require("./services/solanaService");
-const firebase_admin_1 = __importDefault(require("firebase-admin"));
-const secrets_1 = require("./secrets"); // Import the accessSecretVersion function
+const helper_1 = require("./helper");
 // Declare db outside the async function so it's accessible later
 let db;
-function initializeFirebase() {
-    return __awaiter(this, void 0, void 0, function* () {
-        // Initialize Firebase Admin SDK
-        const firebaseDatabaseUrl = process.env.FIREBASE_DB_URL;
-        if (firebase_admin_1.default.apps.length === 0) {
-            // Fetch the service account using the async function
-            const serviceAccount = yield (0, secrets_1.accessSecretJSON)('firebase-admin'); // Use the correct secret name
-            firebase_admin_1.default.initializeApp({
-                credential: firebase_admin_1.default.credential.cert(serviceAccount), // Use the fetched service account
-                databaseURL: firebaseDatabaseUrl,
-            });
-        }
-        db = firebase_admin_1.default.database(); // Assign the initialized database to the global variable
-    });
-}
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 (0, dotenv_1.config)();
 const solanaService = new solanaService_1.SolanaService();
-let esimService; // Declare esimService here
+let airaloWrapper; // Declare airaloWrapper here
 function updatePaymentProfileWithOrder(ppPublicKey, orderId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -59,10 +43,10 @@ function updatePaymentProfileWithOrder(ppPublicKey, orderId) {
 }
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        yield initializeFirebase(); // Wait for Firebase to be initialized
+        db = yield (0, helper_1.initializeFirebase)(); // Wait for Firebase to be initialized
         // Now that Firebase is initialized, initialize services that depend on it.
-        esimService = new airaloService_1.EsimService(db); // Initialize EsimService with the db instance
-        yield esimService.initialize();
+        airaloWrapper = new airaloService_1.AiraloWrapper(db); // Initialize AiraloWrapper with the db instance
+        yield airaloWrapper.initialize();
         // User must have payment profile as unique identifier to manage payment and esim subcription
         app.post('/create-payment-profile', (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
@@ -118,7 +102,7 @@ function main() {
                         // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
                         if (!latestOrder.paymentReceived) {
                             latestOrder.paymentReceived = true;
-                            const sim = yield esimService.placeOrder({ quantity, package_id });
+                            const sim = yield airaloWrapper.placeOrder({ quantity, package_id });
                             latestOrder.sim = sim;
                             yield db.ref(`/orders/${orderId}`).set(latestOrder);
                             yield updatePaymentProfileWithOrder(ppPublicKey, orderId);
@@ -193,7 +177,7 @@ function main() {
                             // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
                             if (!latestOrder.paymentReceived) {
                                 latestOrder.paymentReceived = true;
-                                // const topup = await esimService.createTopupOrder({ iccid, package_id, description: "" });
+                                // const topup = await airaloWrapper.createTopupOrder({ iccid, package_id, description: "" });
                                 // latestOrder.topup = topup;
                                 yield db.ref(`/topup_orders/${orderId}`).set(latestOrder);
                                 yield updatePaymentProfileWithOrder(ppPublicKey, orderId);
@@ -222,7 +206,7 @@ function main() {
                 //   iccid,
                 //   description
                 // };
-                // const orderResult: AiraloOrder = await esimService.createTopupOrder(topupOrderParams);
+                // const orderResult: AiraloOrder = await airaloWrapper.createTopupOrder(topupOrderParams);
                 // res.status(201).json(orderResult);
             }
             catch (error) {
@@ -239,7 +223,7 @@ function main() {
                 if (!iccid) {
                     return res.status(400).json({ error: 'Missing required parameter: iccid' });
                 }
-                const topups = yield esimService.getSIMTopups(iccid);
+                const topups = yield airaloWrapper.getSIMTopups(iccid);
                 if (!topups) {
                     // This typically means the service encountered an error it couldn't recover from,
                     // or the method in the service is designed to return undefined in some error cases.
@@ -281,7 +265,7 @@ function main() {
                 }
                 // Cast type to the expected union type, assuming valid input based on validation above
                 const packageType = type;
-                const packages = yield esimService.getPackagePlans(packageType, country);
+                const packages = yield airaloWrapper.getPackagePlans(packageType, country);
                 if (packages === undefined) {
                     // This case is handled in the service by returning undefined on error
                     return res.status(500).json({ error: 'Failed to retrieve package plans' });

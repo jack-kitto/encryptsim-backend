@@ -65,7 +65,7 @@ export interface ExportedAiraloPackage {
   operators: ExportedOperator[];
 }
 
-export class EsimService{
+export class AiraloWrapper{
   private db: admin.database.Database;
   private airaloService: AiraloService;
 
@@ -222,35 +222,7 @@ export class EsimService{
       });
 
       // parsing information
-      let cleanedPackageData = [];
-      for (const item of packages.data) {
-        let newObj = {};
-        const data_json = JSON.stringify(item);
-        const parsed_item = JSON.parse(data_json);
-        newObj["region"] = parsed_item.slug;
-        newObj["operators"] = []
-
-        for (const operator of parsed_item.operators) {
-          const newOperator = {};
-          newOperator["id"] = operator.id;
-          newOperator["title"] = operator.title;
-          newOperator["packages"] = [];
-
-          for (const packageItem of operator.packages) {
-            newOperator["packages"].push({
-              id: packageItem.id,
-              price: packageItem.price,
-              day: packageItem.day,
-              data: packageItem.data
-            });
-          }
-          newObj["operators"].push(newOperator);
-        }
-
-        console.log(newObj)
-        cleanedPackageData.push(newObj);
-      }
-      console.log(cleanedPackageData)
+      const cleanedPackageData = parsePackageResponse(packages.data);
 
       // Cache the fetched data with a timestamp
       await this.db.ref(cacheKey).set({ data: cleanedPackageData, timestamp: now });
@@ -262,4 +234,36 @@ export class EsimService{
       throw new Error(error.message);
     }
   }
+}
+
+export function parsePackageResponse(packages: AiraloPackage[]): any[] {
+  let cleanedPackageData = [];
+  for (const item of packages) {
+    let newObj = {};
+    const data_json = JSON.stringify(item);
+    const parsed_item = JSON.parse(data_json);
+    newObj["region"] = parsed_item.slug;
+    newObj["operators"] = []
+
+    for (const operator of parsed_item.operators) {
+      const newOperator = {};
+      newOperator["id"] = operator.id;
+      newOperator["title"] = operator.title;
+      newOperator["packages"] = [];
+
+      for (const packageItem of operator.packages) {
+        newOperator["packages"].push({
+          id: packageItem.id,
+          price: packageItem.price,
+          day: packageItem.day,
+          data: packageItem.data
+        });
+      }
+      newObj["operators"].push(newOperator);
+    }
+
+    cleanedPackageData.push(newObj);
+  }
+
+  return cleanedPackageData
 }

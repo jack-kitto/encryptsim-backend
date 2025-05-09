@@ -48,7 +48,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
 const index_1 = require("../src/index"); // Assuming you are testing updatePaymentProfileWithOrder
 const dotenv = __importStar(require("dotenv"));
-const secrets_1 = require("../src/secrets");
+const helper_1 = require("../src/helper");
 dotenv.config();
 let db; // Declare db here
 function initializeFirebase() {
@@ -57,7 +57,7 @@ function initializeFirebase() {
         const firebaseDatabaseUrl = process.env.FIREBASE_DB_URL;
         if (firebase_admin_1.default.apps.length === 0) {
             // Fetch the service account using the async function
-            const serviceAccount = yield (0, secrets_1.accessSecretJSON)('firebase-admin'); // Use the correct secret name
+            const serviceAccount = yield (0, helper_1.accessSecretJSON)('firebase-admin'); // Use the correct secret name
             firebase_admin_1.default.initializeApp({
                 credential: firebase_admin_1.default.credential.cert(serviceAccount), // Use the fetched service account
                 databaseURL: firebaseDatabaseUrl,

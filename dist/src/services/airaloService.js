@@ -9,19 +9,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EsimService = void 0;
+exports.AiraloWrapper = void 0;
+exports.parsePackageResponse = parsePackageResponse;
 const dotenv_1 = require("dotenv");
 const airalo_api_1 = require("@montarist/airalo-api");
-const secrets_1 = require("../secrets");
+const helper_1 = require("../helper");
 (0, dotenv_1.config)();
-class EsimService {
+class AiraloWrapper {
     constructor(db) {
         this.db = db; // Receive the initialized db instance
     }
     initialize() {
         return __awaiter(this, void 0, void 0, function* () {
             const clientId = process.env.AIRALO_CLIENT_ID;
-            const clientSecret = yield (0, secrets_1.accessSecretValue)("AIRALO_CLIENT_SECRET");
+            const clientSecret = yield (0, helper_1.accessSecretValue)("AIRALO_CLIENT_SECRET");
             const clientUrl = process.env.AIRALO_CLIENT_URL;
             if (!clientId) {
                 throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
@@ -33,7 +34,6 @@ class EsimService {
             });
         });
     }
-    // Removed the connectToFirebase method
     placeOrder(orderDetails) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
@@ -155,32 +155,7 @@ class EsimService {
                     country
                 });
                 // parsing information
-                let cleanedPackageData = [];
-                for (const item of packages.data) {
-                    let newObj = {};
-                    const data_json = JSON.stringify(item);
-                    const parsed_item = JSON.parse(data_json);
-                    newObj["region"] = parsed_item.slug;
-                    newObj["operators"] = [];
-                    for (const operator of parsed_item.operators) {
-                        const newOperator = {};
-                        newOperator["id"] = operator.id;
-                        newOperator["title"] = operator.title;
-                        newOperator["packages"] = [];
-                        for (const packageItem of operator.packages) {
-                            newOperator["packages"].push({
-                                id: packageItem.id,
-                                price: packageItem.price,
-                                day: packageItem.day,
-                                data: packageItem.data
-                            });
-                        }
-                        newObj["operators"].push(newOperator);
-                    }
-                    console.log(newObj);
-                    cleanedPackageData.push(newObj);
-                }
-                console.log(cleanedPackageData);
+                const cleanedPackageData = parsePackageResponse(packages.data);
                 // Cache the fetched data with a timestamp
                 yield this.db.ref(cacheKey).set({ data: cleanedPackageData, timestamp: now });
                 console.log("Cached data to Firebase for", cacheKey);
@@ -193,5 +168,32 @@ class EsimService {
         });
     }
 }
-exports.EsimService = EsimService;
+exports.AiraloWrapper = AiraloWrapper;
+function parsePackageResponse(packages) {
+    let cleanedPackageData = [];
+    for (const item of packages) {
+        let newObj = {};
+        const data_json = JSON.stringify(item);
+        const parsed_item = JSON.parse(data_json);
+        newObj["region"] = parsed_item.slug;
+        newObj["operators"] = [];
+        for (const operator of parsed_item.operators) {
+            const newOperator = {};
+            newOperator["id"] = operator.id;
+            newOperator["title"] = operator.title;
+            newOperator["packages"] = [];
+            for (const packageItem of operator.packages) {
+                newOperator["packages"].push({
+                    id: packageItem.id,
+                    price: packageItem.price,
+                    day: packageItem.day,
+                    data: packageItem.data
+                });
+            }
+            newObj["operators"].push(newOperator);
+        }
+        cleanedPackageData.push(newObj);
+    }
+    return cleanedPackageData;
+}
 //# sourceMappingURL=airaloService.js.map

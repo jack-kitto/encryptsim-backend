@@ -1,9 +1,8 @@
 import express, { Request, Response } from 'express';
 import { config } from "dotenv";
-import { SimOrder, EsimService, AiraloTopupOrderParams, AiraloTopupOrder, AiraloSIMTopup } from './services/airaloService'; // Added AiraloTopupOrderParams, AiraloOrder, AiraloSIMTopup
+import { SimOrder, AiraloWrapper, AiraloTopupOrder, AiraloSIMTopup } from './services/airaloService'; // Added AiraloTopupOrderParams, AiraloOrder, AiraloSIMTopup
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
-import { AiraloError } from '@montarist/airalo-api';
 import { initializeFirebase } from './helper';
 
 // Declare db outside the async function so it's accessible later
@@ -45,7 +44,7 @@ interface TopupsOrder {
 }
 
 const solanaService = new SolanaService();
-let esimService: EsimService; // Declare esimService here
+let airaloWrapper: AiraloWrapper; // Declare airaloWrapper here
 
 export async function updatePaymentProfileWithOrder(ppPublicKey: string, orderId: string): Promise<void> {
   try {
@@ -67,8 +66,8 @@ async function main() {
   db = await initializeFirebase(); // Wait for Firebase to be initialized
 
   // Now that Firebase is initialized, initialize services that depend on it.
-  esimService = new EsimService(db); // Initialize EsimService with the db instance
-  await esimService.initialize();
+  airaloWrapper = new AiraloWrapper(db); // Initialize AiraloWrapper with the db instance
+  await airaloWrapper.initialize();
 
   // User must have payment profile as unique identifier to manage payment and esim subcription
   app.post('/create-payment-profile', async (req: Request, res: Response) => {
@@ -134,7 +133,7 @@ async function main() {
           // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
           if (!latestOrder.paymentReceived) {
             latestOrder.paymentReceived = true;
-            const sim = await esimService.placeOrder({ quantity, package_id });
+            const sim = await airaloWrapper.placeOrder({ quantity, package_id });
             latestOrder.sim = sim
 
             await db.ref(`/orders/${orderId}`).set(latestOrder);
@@ -220,7 +219,7 @@ async function main() {
             // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
             if (!latestOrder.paymentReceived) {
               latestOrder.paymentReceived = true;
-              // const topup = await esimService.createTopupOrder({ iccid, package_id, description: "" });
+              // const topup = await airaloWrapper.createTopupOrder({ iccid, package_id, description: "" });
               
               // latestOrder.topup = topup;
               await db.ref(`/topup_orders/${orderId}`).set(latestOrder);
@@ -252,7 +251,7 @@ async function main() {
       //   description
       // };
 
-      // const orderResult: AiraloOrder = await esimService.createTopupOrder(topupOrderParams);
+      // const orderResult: AiraloOrder = await airaloWrapper.createTopupOrder(topupOrderParams);
 
       // res.status(201).json(orderResult);
     } catch (error: any) {
@@ -272,7 +271,7 @@ async function main() {
         return res.status(400).json({ error: 'Missing required parameter: iccid' });
       }
 
-      const topups: AiraloSIMTopup[] = await esimService.getSIMTopups(iccid);
+      const topups: AiraloSIMTopup[] = await airaloWrapper.getSIMTopups(iccid);
 
       if (!topups) {
         // This typically means the service encountered an error it couldn't recover from,
@@ -322,7 +321,7 @@ async function main() {
       // Cast type to the expected union type, assuming valid input based on validation above
       const packageType = type as 'global' | 'local' | 'regional';
 
-      const packages = await esimService.getPackagePlans(packageType, country as string);
+      const packages = await airaloWrapper.getPackagePlans(packageType, country as string);
 
       if (packages === undefined) {
         // This case is handled in the service by returning undefined on error
