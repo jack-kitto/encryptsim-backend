@@ -1,25 +1,32 @@
 import admin from 'firebase-admin';
 import { updatePaymentProfileWithOrder } from '../src/index'; // Assuming you are testing updatePaymentProfileWithOrder
 import * as dotenv from 'dotenv';
+import { accessSecretJSON } from '../src/secrets'
 
 dotenv.config();
 
-const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL || "";
-if (admin.apps.length === 0){
-  const serviceAccount = require("../esim-a3042-firebase-adminsdk-fbsvc-09dcd371d1.json"); 
-  
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: firebaseDatabaseUrl,
-  });
+let db: admin.database.Database; // Declare db here
+
+async function initializeFirebase() {
+  // Initialize Firebase Admin SDK
+  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL
+  if (admin.apps.length === 0){
+    // Fetch the service account using the async function
+    const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
+      databaseURL: firebaseDatabaseUrl,
+    });
+  }
+  return admin.database(); // Return the initialized database
 }
-const db = admin.database();
-const paymentProfilesRef = db.ref('payment_profiles');
 
 describe('updatePaymentProfileWithOrder', () => {
   const ppPublicKey = 'testPublicKeyMultiOrders';
-  const testRef = paymentProfilesRef.child(ppPublicKey); // Reference to the test location
-  
+  let paymentProfilesRef: admin.database.Reference; // Declare ref here
+  let testRef: admin.database.Reference; // Declare testRef here
+
   // Helper function to get the orderIds array from the database
   async function getOrderIds(): Promise<string[]> {
     const snapshot = await testRef.once('value');
@@ -30,12 +37,18 @@ describe('updatePaymentProfileWithOrder', () => {
     }
   }
 
-  beforeEach(async () => {
-    // Clear any existing data in the test location before each test
-    await testRef.remove().catch(error => {
-        console.error("Error during cleanup:", error);
+    beforeEach(async () => {
+      // Initialize Firebase and get db instance
+      db = await initializeFirebase();
+      // Define references after db is initialized
+      paymentProfilesRef = db.ref('payment_profiles');
+      testRef = paymentProfilesRef.child(ppPublicKey); // Reference to the test location
+
+      // Clear any existing data in the test location before each test
+      await testRef.remove().catch(error => {
+          console.error("Error during cleanup:", error);
+      });
     });
-  });
 
     it('should correctly add multiple orderIds to orderIds array', async () => {
         const orderIdsToAdd = ['orderId1', 'orderId2', 'orderId3'];

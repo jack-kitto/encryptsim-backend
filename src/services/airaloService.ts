@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
 import * as admin from "firebase-admin";
+import { accessSecretValue } from "../secrets";
 config();
 
 export interface SimOrder {
@@ -40,17 +41,17 @@ export class EsimService{
 
   constructor(db: admin.database.Database) {
     this.db = db; // Receive the initialized db instance
+  }
 
+  public async initialize() {
     const clientId = process.env.AIRALO_CLIENT_ID;
-    const clientSecret = process.env.AIRALO_CLIENT_SECRET;
+    const clientSecret = await accessSecretValue("AIRALO_CLIENT_SECRET");
     const clientUrl = process.env.AIRALO_CLIENT_URL;
 
     if (!clientId) {
       throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
     }
-    if (!clientSecret) {
-      throw new Error("AIRALO_CLIENT_SECRET environment variable is not set.");
-    }
+
     this.airaloService = new AiraloService({ 
       baseUrl: clientUrl,
       clientId, 
@@ -94,6 +95,8 @@ export class EsimService{
     try {
       const cacheKey = `package-plans/${type}/${country || 'global'}`;
       const cachedData = await this.db.ref(cacheKey).once('value');
+      console.log(cachedData)
+      
       const cacheEntry = cachedData.val();
       const now = Date.now();
       const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;

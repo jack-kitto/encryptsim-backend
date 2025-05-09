@@ -12,23 +12,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EsimService = void 0;
 const dotenv_1 = require("dotenv");
 const airalo_api_1 = require("@montarist/airalo-api");
+const secrets_1 = require("../secrets");
 (0, dotenv_1.config)();
 class EsimService {
     constructor(db) {
         this.db = db; // Receive the initialized db instance
-        const clientId = process.env.AIRALO_CLIENT_ID;
-        const clientSecret = process.env.AIRALO_CLIENT_SECRET;
-        const clientUrl = process.env.AIRALO_CLIENT_URL;
-        if (!clientId) {
-            throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
-        }
-        if (!clientSecret) {
-            throw new Error("AIRALO_CLIENT_SECRET environment variable is not set.");
-        }
-        this.airaloService = new airalo_api_1.AiraloService({
-            baseUrl: clientUrl,
-            clientId,
-            clientSecret
+    }
+    initialize() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const clientId = process.env.AIRALO_CLIENT_ID;
+            const clientSecret = yield (0, secrets_1.accessSecretValue)("AIRALO_CLIENT_SECRET");
+            const clientUrl = process.env.AIRALO_CLIENT_URL;
+            if (!clientId) {
+                throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
+            }
+            this.airaloService = new airalo_api_1.AiraloService({
+                baseUrl: clientUrl,
+                clientId,
+                clientSecret
+            });
         });
     }
     // Removed the connectToFirebase method
@@ -65,6 +67,7 @@ class EsimService {
             try {
                 const cacheKey = `package-plans/${type}/${country || 'global'}`;
                 const cachedData = yield this.db.ref(cacheKey).once('value');
+                console.log(cachedData);
                 const cacheEntry = cachedData.val();
                 const now = Date.now();
                 const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;

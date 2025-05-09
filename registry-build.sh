@@ -1,0 +1,1 @@
+gcloud builds submit --tag us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:latest

@@ -1,17 +1,17 @@
 import { EsimService } from "../src/services/airaloService";
 import admin from "firebase-admin";
-import { accessSecretVersion } from '../src/secrets';
+import { accessSecretJSON } from '../src/secrets';
 import { config } from "dotenv";
 
 config()
 
 async function initializeFirebase(): Promise<admin.database.Database> {
   // Initialize Firebase Admin SDK
-  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL || "";
+  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL
   console.log(firebaseDatabaseUrl)
   if (admin.apps.length === 0){
     // Fetch the service account using the async function
-    const serviceAccount = await accessSecretVersion('firebase-admin'); // Use the correct secret name
+    const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
 
     console.log(serviceAccount)
 
@@ -29,7 +29,8 @@ describe("AiraloService", () => {
   beforeEach(async () => {
     const db = await initializeFirebase();
     esimService = new EsimService(db);
-  });
+    await esimService.initialize();
+  }, 10000); // Increased timeout to 10 seconds for beforeEach
 
   // This test now acts as an integration test, calling the actual service
   it("should call getPackagePlans successfully", async () => {
@@ -44,5 +45,5 @@ describe("AiraloService", () => {
     // const firstPackage = packages[0] as AiraloPackage;
     const firstPackage = packages[0]
     console.log(firstPackage)
-  });
+  }, 10000); // Increased timeout to 10 seconds for the test as well
 });

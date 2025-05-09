@@ -48,20 +48,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
 const index_1 = require("../src/index"); // Assuming you are testing updatePaymentProfileWithOrder
 const dotenv = __importStar(require("dotenv"));
+const secrets_1 = require("../src/secrets");
 dotenv.config();
-const firebaseDatabaseUrl = process.env.FIREBASE_DB_URL || "";
-if (firebase_admin_1.default.apps.length === 0) {
-    const serviceAccount = require("../esim-a3042-firebase-adminsdk-fbsvc-09dcd371d1.json");
-    firebase_admin_1.default.initializeApp({
-        credential: firebase_admin_1.default.credential.cert(serviceAccount),
-        databaseURL: firebaseDatabaseUrl,
+let db; // Declare db here
+function initializeFirebase() {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Initialize Firebase Admin SDK
+        const firebaseDatabaseUrl = process.env.FIREBASE_DB_URL;
+        if (firebase_admin_1.default.apps.length === 0) {
+            // Fetch the service account using the async function
+            const serviceAccount = yield (0, secrets_1.accessSecretJSON)('firebase-admin'); // Use the correct secret name
+            firebase_admin_1.default.initializeApp({
+                credential: firebase_admin_1.default.credential.cert(serviceAccount), // Use the fetched service account
+                databaseURL: firebaseDatabaseUrl,
+            });
+        }
+        return firebase_admin_1.default.database(); // Return the initialized database
     });
 }
-const db = firebase_admin_1.default.database();
-const paymentProfilesRef = db.ref('payment_profiles');
 describe('updatePaymentProfileWithOrder', () => {
     const ppPublicKey = 'testPublicKeyMultiOrders';
-    const testRef = paymentProfilesRef.child(ppPublicKey); // Reference to the test location
+    let paymentProfilesRef; // Declare ref here
+    let testRef; // Declare testRef here
     // Helper function to get the orderIds array from the database
     function getOrderIds() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -75,6 +83,11 @@ describe('updatePaymentProfileWithOrder', () => {
         });
     }
     beforeEach(() => __awaiter(void 0, void 0, void 0, function* () {
+        // Initialize Firebase and get db instance
+        db = yield initializeFirebase();
+        // Define references after db is initialized
+        paymentProfilesRef = db.ref('payment_profiles');
+        testRef = paymentProfilesRef.child(ppPublicKey); // Reference to the test location
         // Clear any existing data in the test location before each test
         yield testRef.remove().catch(error => {
             console.error("Error during cleanup:", error);

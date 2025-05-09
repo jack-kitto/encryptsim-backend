@@ -9,10 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.accessSecretVersion = accessSecretVersion;
+exports.accessSecretJSON = accessSecretJSON;
+exports.accessSecretValue = accessSecretValue;
 const secret_manager_1 = require("@google-cloud/secret-manager");
 const client = new secret_manager_1.SecretManagerServiceClient();
-function accessSecretVersion(secretName_1) {
+function accessSecretJSON(secretName_1) {
     return __awaiter(this, arguments, void 0, function* (secretName, versionId = 'latest') {
         var _a, _b;
         const [version] = yield client.accessSecretVersion({
@@ -23,6 +24,19 @@ function accessSecretVersion(secretName_1) {
             throw new Error(`Secret ${secretName} version ${versionId} has no data.`);
         }
         return JSON.parse(payload);
+    });
+}
+function accessSecretValue(secretName_1) {
+    return __awaiter(this, arguments, void 0, function* (secretName, versionId = 'latest') {
+        var _a, _b;
+        const [version] = yield client.accessSecretVersion({
+            name: `projects/esim-a3042/secrets/${secretName}/versions/${versionId}`,
+        });
+        const payload = (_b = (_a = version.payload) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.toString();
+        if (!payload) {
+            throw new Error(`Secret ${secretName} version ${versionId} has no data.`);
+        }
+        return payload;
     });
 }
 //# sourceMappingURL=secrets.js.map

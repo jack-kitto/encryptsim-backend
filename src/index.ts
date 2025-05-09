@@ -3,17 +3,17 @@ import { config } from "dotenv";
 import { SimOrder, EsimService } from './services/airaloService';
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
-import { accessSecretVersion } from './secrets'; // Import the accessSecretVersion function
+import { accessSecretJSON } from './secrets'; // Import the accessSecretVersion function
 
 // Declare db outside the async function so it's accessible later
 let db: admin.database.Database;
 
 async function initializeFirebase() {
   // Initialize Firebase Admin SDK
-  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL || "";
+  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL
   if (admin.apps.length === 0){
     // Fetch the service account using the async function
-    const serviceAccount = await accessSecretVersion('firebase-admin'); // Use the correct secret name
+    const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
@@ -70,6 +70,7 @@ async function main() {
 
   // Now that Firebase is initialized, initialize services that depend on it.
   esimService = new EsimService(db); // Initialize EsimService with the db instance
+  await esimService.initialize();
 
   // User must have payment profile as unique identifier to manage payment and esim subcription
   app.post('/create-payment-profile', async (req: Request, res: Response) => {

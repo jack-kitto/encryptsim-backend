@@ -24,10 +24,10 @@ let db;
 function initializeFirebase() {
     return __awaiter(this, void 0, void 0, function* () {
         // Initialize Firebase Admin SDK
-        const firebaseDatabaseUrl = process.env.FIREBASE_DB_URL || "";
+        const firebaseDatabaseUrl = process.env.FIREBASE_DB_URL;
         if (firebase_admin_1.default.apps.length === 0) {
             // Fetch the service account using the async function
-            const serviceAccount = yield (0, secrets_1.accessSecretVersion)('esim-a3042-firebase-adminsdk-fbsvc-09dcd371d1-json'); // Use the correct secret name
+            const serviceAccount = yield (0, secrets_1.accessSecretJSON)('firebase-admin'); // Use the correct secret name
             firebase_admin_1.default.initializeApp({
                 credential: firebase_admin_1.default.credential.cert(serviceAccount), // Use the fetched service account
                 databaseURL: firebaseDatabaseUrl,
@@ -62,6 +62,7 @@ function main() {
         yield initializeFirebase(); // Wait for Firebase to be initialized
         // Now that Firebase is initialized, initialize services that depend on it.
         esimService = new airaloService_1.EsimService(db); // Initialize EsimService with the db instance
+        yield esimService.initialize();
         // User must have payment profile as unique identifier to manage payment and esim subcription
         app.post('/create-payment-profile', (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
