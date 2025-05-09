@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
 import * as admin from "firebase-admin";
+import { accessSecretValue } from "../secrets";
 config();
 
 export interface SimOrder {
@@ -66,23 +67,21 @@ export interface ExportedAiraloPackage {
 
 export class EsimService{
   private db: admin.database.Database;
-  private firebaseDatabaseUrl: string;
   private airaloService: AiraloService;
 
-  constructor() {
-    this.firebaseDatabaseUrl = process.env.FIREBASE_DB_URL || "";
-    this.connectToFirebase();
+  constructor(db: admin.database.Database) {
+    this.db = db; // Receive the initialized db instance
+  }
 
+  public async initialize() {
     const clientId = process.env.AIRALO_CLIENT_ID;
-    const clientSecret = process.env.AIRALO_CLIENT_SECRET;
+    const clientSecret = await accessSecretValue("AIRALO_CLIENT_SECRET");
     const clientUrl = process.env.AIRALO_CLIENT_URL;
 
     if (!clientId) {
       throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
     }
-    if (!clientSecret) {
-      throw new Error("AIRALO_CLIENT_SECRET environment variable is not set.");
-    }
+
     this.airaloService = new AiraloService({ 
       baseUrl: clientUrl,
       clientId, 
@@ -90,17 +89,7 @@ export class EsimService{
     });
   }
 
-  public connectToFirebase(): void {
-    if (admin.apps.length === 0) {
-      const serviceAccount = require("../../esim-a3042-firebase-adminsdk-fbsvc-09dcd371d1.json");
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: this.firebaseDatabaseUrl,
-      });
-    }
-    this.db = admin.database();
-  }
+  // Removed the connectToFirebase method
 
   public async placeOrder(
     orderDetails: OrderDetails
@@ -217,6 +206,8 @@ export class EsimService{
     try {
       const cacheKey = `package-plans/${type}/${country || 'global'}`;
       const cachedData = await this.db.ref(cacheKey).once('value');
+      console.log(cachedData)
+      
       const cacheEntry = cachedData.val();
       const now = Date.now();
       const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
