@@ -25,7 +25,7 @@ export class OrderHandler {
   private solanaService: SolanaService;
   private airaloWrapper: AiraloWrapper;
   private paymentCheckDuration = 600000; // 10 minutes
-  private pollingInterval = 10000; // Poll every 10 seconds
+  private pollingInterval = 30000; // Poll every 10 seconds
 
   constructor(db : admin.database.Database, solanaService: SolanaService, airaloWrapper: AiraloWrapper) {
     this.db = db;
