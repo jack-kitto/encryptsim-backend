@@ -41,35 +41,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const firebase_admin_1 = __importDefault(require("firebase-admin"));
-const index_1 = require("../src/index"); // Assuming you are testing updatePaymentProfileWithOrder
 const dotenv = __importStar(require("dotenv"));
+const order_handler_1 = require("../src/order-handler");
 const helper_1 = require("../src/helper");
 dotenv.config();
 let db; // Declare db here
-function initializeFirebase() {
-    return __awaiter(this, void 0, void 0, function* () {
-        // Initialize Firebase Admin SDK
-        const firebaseDatabaseUrl = process.env.FIREBASE_DB_URL;
-        if (firebase_admin_1.default.apps.length === 0) {
-            // Fetch the service account using the async function
-            const serviceAccount = yield (0, helper_1.accessSecretJSON)('firebase-admin'); // Use the correct secret name
-            firebase_admin_1.default.initializeApp({
-                credential: firebase_admin_1.default.credential.cert(serviceAccount), // Use the fetched service account
-                databaseURL: firebaseDatabaseUrl,
-            });
-        }
-        return firebase_admin_1.default.database(); // Return the initialized database
-    });
-}
 describe('updatePaymentProfileWithOrder', () => {
     const ppPublicKey = 'testPublicKeyMultiOrders';
     let paymentProfilesRef; // Declare ref here
     let testRef; // Declare testRef here
+    let orderHandler;
+    let dbHandler;
     // Helper function to get the orderIds array from the database
     function getOrderIds() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -84,14 +67,18 @@ describe('updatePaymentProfileWithOrder', () => {
     }
     beforeEach(() => __awaiter(void 0, void 0, void 0, function* () {
         // Initialize Firebase and get db instance
-        db = yield initializeFirebase();
+        db = yield (0, helper_1.initializeFirebase)();
+        orderHandler = new order_handler_1.OrderHandler(db, null, null);
+        dbHandler = new helper_1.DBHandler(db);
         // Define references after db is initialized
         paymentProfilesRef = db.ref('payment_profiles');
         testRef = paymentProfilesRef.child(ppPublicKey); // Reference to the test location
-        // Clear any existing data in the test location before each test
-        yield testRef.remove().catch(error => {
-            console.error("Error during cleanup:", error);
-        });
+        if (testRef) {
+            // Clear any existing data in the test location before each test
+            yield testRef.remove().catch(error => {
+                console.error("Error during cleanup:", error);
+            });
+        }
     }));
     it('should correctly add multiple orderIds to orderIds array', () => __awaiter(void 0, void 0, void 0, function* () {
         const orderIdsToAdd = ['orderId1', 'orderId2', 'orderId3'];
@@ -100,7 +87,7 @@ describe('updatePaymentProfileWithOrder', () => {
         yield testRef.set({ orderIds: initialOrderIds });
         // Add each orderId sequentially
         for (const orderId of orderIdsToAdd) {
-            yield (0, index_1.updatePaymentProfileWithOrder)(ppPublicKey, orderId);
+            yield dbHandler.updatePPOrder(ppPublicKey, orderId);
         }
         const snapshot = yield testRef.once('value');
         const data = snapshot.val();
@@ -110,7 +97,7 @@ describe('updatePaymentProfileWithOrder', () => {
     }));
     it('should create orderIds array and add orderId if it does not exist', () => __awaiter(void 0, void 0, void 0, function* () {
         const orderId = 'testOrderId';
-        yield (0, index_1.updatePaymentProfileWithOrder)(ppPublicKey, orderId);
+        yield dbHandler.updatePPOrder(ppPublicKey, orderId);
         const orderIds = yield getOrderIds();
         expect(orderIds).toEqual([orderId]);
     }));

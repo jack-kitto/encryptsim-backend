@@ -14,8 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_fetch_1 = __importDefault(require("node-fetch"));
 const API_URL = 'http://localhost:3000'; // Assuming your app runs on this port
-describe('/order integration test', () => {
-    it('should process an order and receive payment eventually', () => __awaiter(void 0, void 0, void 0, function* () {
+describe('order', () => {
+    it('full-integration', () => __awaiter(void 0, void 0, void 0, function* () {
         // --- START CUSTOM REQUEST BODY ---
         // Replace with your actual test data for the /order POST request
         const customOrderRequestBody = {
@@ -54,7 +54,7 @@ describe('/order integration test', () => {
             else if (getOrderResponse.status === 200) {
                 orderStatus = yield getOrderResponse.json();
                 console.log('Order status received (200):', orderStatus);
-                if (orderStatus.paymentReceived && orderStatus.sim) {
+                if (orderStatus.status === 'esim_provisioned' && orderStatus.sim) {
                     console.log('Payment received and sim available!');
                     break; // Exit loop if payment is received
                 }
@@ -72,7 +72,7 @@ describe('/order integration test', () => {
         // 3. Assert the final status
         expect(orderStatus).toBeDefined();
         expect(orderStatus === null || orderStatus === void 0 ? void 0 : orderStatus.orderId).toBe(orderId);
-        expect(orderStatus === null || orderStatus === void 0 ? void 0 : orderStatus.paymentReceived).toBe(true);
+        expect(orderStatus === null || orderStatus === void 0 ? void 0 : orderStatus.status).toBe('esim_provisioned');
         expect(orderStatus === null || orderStatus === void 0 ? void 0 : orderStatus.sim).toBeDefined();
         // You might want to add more assertions based on your expected order status
         // e.g., expect(orderStatus?.qrCode).toBeDefined();

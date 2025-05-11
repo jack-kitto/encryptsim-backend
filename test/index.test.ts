@@ -1,31 +1,18 @@
 import admin from 'firebase-admin';
-import { updatePaymentProfileWithOrder } from '../src/index'; // Assuming you are testing updatePaymentProfileWithOrder
 import * as dotenv from 'dotenv';
-import { accessSecretJSON } from '../src/helper'
+import { OrderHandler } from '../src/order-handler';
+import { DBHandler, initializeFirebase } from '../src/helper';
 
 dotenv.config();
 
 let db: admin.database.Database; // Declare db here
 
-async function initializeFirebase() {
-  // Initialize Firebase Admin SDK
-  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL
-  if (admin.apps.length === 0){
-    // Fetch the service account using the async function
-    const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
-      databaseURL: firebaseDatabaseUrl,
-    });
-  }
-  return admin.database(); // Return the initialized database
-}
-
 describe('updatePaymentProfileWithOrder', () => {
   const ppPublicKey = 'testPublicKeyMultiOrders';
   let paymentProfilesRef: admin.database.Reference; // Declare ref here
   let testRef: admin.database.Reference; // Declare testRef here
+  let orderHandler: OrderHandler;
+  let dbHandler : DBHandler;
 
   // Helper function to get the orderIds array from the database
   async function getOrderIds(): Promise<string[]> {
@@ -40,14 +27,19 @@ describe('updatePaymentProfileWithOrder', () => {
     beforeEach(async () => {
       // Initialize Firebase and get db instance
       db = await initializeFirebase();
+      orderHandler = new OrderHandler(db, null, null);
+      dbHandler = new DBHandler(db);
+
       // Define references after db is initialized
       paymentProfilesRef = db.ref('payment_profiles');
       testRef = paymentProfilesRef.child(ppPublicKey); // Reference to the test location
 
-      // Clear any existing data in the test location before each test
-      await testRef.remove().catch(error => {
-          console.error("Error during cleanup:", error);
-      });
+        if (testRef) {
+            // Clear any existing data in the test location before each test
+            await testRef.remove().catch(error => {
+                console.error("Error during cleanup:", error);
+            });
+        }
     });
 
     it('should correctly add multiple orderIds to orderIds array', async () => {
@@ -59,7 +51,7 @@ describe('updatePaymentProfileWithOrder', () => {
 
         // Add each orderId sequentially
         for (const orderId of orderIdsToAdd) {
-            await updatePaymentProfileWithOrder(ppPublicKey, orderId);
+            await dbHandler.updatePPOrder(ppPublicKey, orderId);
         }
         
         const snapshot = await testRef.once('value');
@@ -72,7 +64,7 @@ describe('updatePaymentProfileWithOrder', () => {
 
     it('should create orderIds array and add orderId if it does not exist', async () => {
         const orderId = 'testOrderId';
-        await updatePaymentProfileWithOrder(ppPublicKey, orderId);
+        await dbHandler.updatePPOrder(ppPublicKey, orderId);
         const orderIds = await getOrderIds();
 
         expect(orderIds).toEqual([orderId]);

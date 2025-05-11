@@ -2,9 +2,9 @@ import fetch from 'node-fetch';
 
 const API_URL = 'http://localhost:3000'; // Assuming your app runs on this port
 
-describe('/order integration test', () => {
+describe('order', () => {
 
-  it('should process an order and receive payment eventually', async () => {
+  it('full-integration', async () => {
     // --- START CUSTOM REQUEST BODY ---
     // Replace with your actual test data for the /order POST request
     const customOrderRequestBody = {
@@ -49,7 +49,7 @@ describe('/order integration test', () => {
         orderStatus = await getOrderResponse.json();
         console.log('Order status received (200):', orderStatus);
 
-        if (orderStatus.paymentReceived && orderStatus.sim) {
+        if (orderStatus.status === 'esim_provisioned' && orderStatus.sim) {
           console.log('Payment received and sim available!');
           break; // Exit loop if payment is received
         }
@@ -68,7 +68,7 @@ describe('/order integration test', () => {
     // 3. Assert the final status
     expect(orderStatus).toBeDefined();
     expect(orderStatus?.orderId).toBe(orderId);
-    expect(orderStatus?.paymentReceived).toBe(true);
+    expect(orderStatus?.status).toBe('esim_provisioned');
     expect(orderStatus?.sim).toBeDefined();
     // You might want to add more assertions based on your expected order status
     // e.g., expect(orderStatus?.qrCode).toBeDefined();

@@ -1,7 +1,6 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import admin from "firebase-admin";
 
-
 const client = new SecretManagerServiceClient();
 
 export async function accessSecretJSON(secretName: string, versionId = 'latest'): Promise<any> {
@@ -35,10 +34,45 @@ export async function initializeFirebase(): Promise<admin.database.Database> {
     // Fetch the service account using the async function
     const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
-      databaseURL: firebaseDatabaseUrl,
-    });
+    if (serviceAccount) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
+        databaseURL: firebaseDatabaseUrl,
+      });
+    } else {
+      throw new Error('Failed to authenticate Firebase');
+    }
   }
   return admin.database(); // Assign the initialized database to the global variable
+}
+
+export class DBHandler {
+  private db: admin.database.Database;
+
+  constructor(db: admin.database.Database) {
+    this.db = db;
+  }
+
+  public async getPaymentProfile(ppPublicKey: string): Promise<any> {
+    const ppSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+    const pp = ppSnapshot.val()
+  
+    return pp
+  }
+
+  public async updatePPOrder(ppPublicKey: string, order_id: string): Promise<void> {
+    const ppRef = this.db.ref(`/payment_profiles/${ppPublicKey}`);
+    const ppSnapshot = await ppRef.once('value');
+    const pp = ppSnapshot.val();
+    
+    let orderIds: string[] = [];
+
+    if (pp && pp.orderIds) {
+      orderIds = pp.orderIds;
+    }
+    
+    orderIds.push(order_id);
+
+    await ppRef.update({ orderIds });
+  }
 }
