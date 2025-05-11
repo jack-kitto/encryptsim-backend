@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { config } from "dotenv";
-import { SimOrder, AiraloWrapper, AiraloTopupOrder, AiraloSIMTopup } from './services/airaloService';
+import { AiraloWrapper, AiraloTopupOrder, AiraloSIMTopup } from './services/airaloService';
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
 import { initializeFirebase } from './helper';
