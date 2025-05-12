@@ -82,7 +82,7 @@ class SolanaService {
             for (let i = 0; i < maxSendRetries; i++) {
                 try {
                     console.log(`Attempt ${i + 1} to send transaction...`);
-                    signature = yield this.connection.sendTransaction(transaction, [sourceWallet]);
+                    signature = yield this.connection.sendTransaction(transaction, [sourceWallet], { skipPreflight: true, });
                     console.log(`Transaction sent with signature: ${signature}`);
                     sendError = undefined; // Clear any previous send error
                     break; // Exit send retry loop on success

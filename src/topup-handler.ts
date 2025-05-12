@@ -5,15 +5,13 @@ import { SolanaService } from './services/solanaService';
 import { AiraloWrapper, AiraloTopupOrder } from './services/airaloService';
 import { DBHandler } from './helper';
 
-interface TopupsOrder {
+interface TopupsOrder { 
     orderId: string;
     ppPublicKey: string;
     iccid: string;
     quantity: number;
     package_id: string;
     package_price: string;
-    paymentReceived: boolean;
-    paidToMaster: boolean;
     paymentInSol?: number;
     topup?: AiraloTopupOrder;
     createdAt: string;
@@ -59,6 +57,113 @@ export class TopupHandler {
         })
     }
 
+
+    public createTopupOrder = async (req: Request, res: Response) => {
+        console.log("Start1");
+        const orderId = uuidv4();
+        const { ppPublicKey, package_id, iccid, package_price } = req.body;
+
+        // Check if the payment profile exists
+        const paymentProfileSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+        if (!paymentProfileSnapshot.exists()) {
+            return res.status(400).json({ error: 'payment profile not found' });
+        }
+        console.log("Start2");
+
+        const order: TopupsOrder = {
+            orderId,
+            ppPublicKey,
+            iccid,
+            quantity: 1,
+            package_id,
+            package_price,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            status: 'pending'
+        };
+
+        await this.db.ref(`/topup_orders/${orderId}`).set(order);
+        console.log("Start3");
+    
+        const startTime = Date.now();
+        console.log("Start3.5");
+        const paymentCheckInterval = setInterval(async () => {
+            console.log("Start3.75");
+            // Check if the total duration has passed
+            if (Date.now() - startTime > this.paymentCheckDuration) {
+                console.log("Start4");
+                console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
+                clearInterval(paymentCheckInterval);
+                return;
+            }
+            console.log("Start5");
+
+            try {
+                // re-fetch order and pp for this cycle
+                console.log("Start6");
+                let order = await this.getTopupOrder(orderId)
+                const pp = await this.dbHandler.getPaymentProfile(order.ppPublicKey)
+
+                // check payment has been received
+                if (order.status === 'pending') {
+                    console.log("Pending");
+                    order = await this.processPayment(order)
+                }
+
+                // if payment has been received, provisioning esims
+                if (order.status === 'paid') {
+                    //order = await this.provisionEsim(order);
+                    console.log("Paid");
+                    await this.updateOrderStatus(order, 'esim_provisioned');
+                }
+
+                // if esim provisioned, pay to master
+                if (order.status === 'esim_provisioned') {
+                    //order = await this.payToMaster(order, pp);
+                    console.log("esim_provisioned");
+                    await this.updateOrderStatus(order, 'paid_to_master');
+                }
+
+                // if paid to master, end this cycle
+                if (order.status === 'paid_to_master') {
+                    console.log("paid_to_master");
+                    clearInterval(paymentCheckInterval);
+                }
+            }
+            catch (error) {
+                console.error(`Error processing order payment for order ${orderId}:`, error);
+                // Depending on error handling requirements, you might want to stop the interval here
+                await this.setOrderError(orderId, error);
+                clearInterval(paymentCheckInterval);
+            }
+        }, this.pollingInterval)
+
+        res.json({ orderId });
+    }
+
+    // === HELPER FUNCTION ===
+    public async payToMaster(order: TopupsOrder, pp: any): Promise<TopupsOrder> {
+        const sig = await this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, parseFloat(order.package_price));
+        if (sig) {
+            await this.updateOrderStatus(order, 'paid_to_master')
+        }
+
+        return order
+    }
+
+    public async provisionEsim(order: TopupsOrder): Promise<TopupsOrder> {
+        // get order
+        const topup = await this.airaloWrapper.createTopupOrder({
+            iccid: order.iccid,
+            package_id: order.package_id
+        });
+        order.topup = topup;
+        order = await this.updateOrderStatus(order, "esim_provisioned")
+        await this.dbHandler.updatePPOrder(order.ppPublicKey, order.orderId)
+
+        return order
+    }
+
     public async processPayment(order: TopupsOrder): Promise<TopupsOrder> {
         const { enoughReceived, solBalance } = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
         order.paymentInSol = solBalance;
@@ -66,6 +171,7 @@ export class TopupHandler {
         if (enoughReceived) {
             console.log(`Payment received for order ${order.orderId}.`);
             order = await this.updateOrderStatus(order, 'paid');
+            console.log("order: ", order.status);
         }
 
         return order;
@@ -74,7 +180,7 @@ export class TopupHandler {
     public async updateOrderStatus(order: TopupsOrder, status: 'pending' | 'paid' | 'esim_provisioned' | 'paid_to_master' | 'failed'): Promise<TopupsOrder> {
         order.status = status;
         order.updatedAt = new Date().toISOString();
-        await this.db.ref(`/orders/${order.orderId}`).set(order);
+        await this.db.ref(`/topup_orders/${order.iccid}`).set(order);
 
         return order
     }
@@ -85,9 +191,13 @@ export class TopupHandler {
         if (!orderSnapshot.exists()) {
             return null
         }
-
         return orderSnapshot.val() as TopupsOrder;
     }
 
-
+    private async setOrderError(order_id: string, errorLog: string): Promise<void> {
+        const order = await this.getTopupOrder(order_id)
+        order.errorLog = errorLog
+        order.updatedAt = new Date().toISOString();
+        await this.db.ref(`/orders/${order.orderId}`).set(order);
+      }
 }

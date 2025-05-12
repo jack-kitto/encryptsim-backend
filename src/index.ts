@@ -4,7 +4,8 @@ import { AiraloWrapper, AiraloTopupOrder, AiraloSIMTopup } from './services/aira
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
 import { initializeFirebase } from './helper';
-import { OrderHandler } from './order-handler'; // Import the new handler
+import { OrderHandler } from './order-handler'; 
+import { TopupHandler } from './topup-handler';
 
 // Declare db outside the async function so it's accessible later
 let db: admin.database.Database;
@@ -19,32 +20,36 @@ interface PaymentProfile {
   privateKey: string;
 }
 
-interface TopupsOrder {
-  orderId: string;
-  ppPublicKey: string;
-  iccid: string;
-  quantity: number;
-  package_id: string;
-  package_price: string;
-  paymentReceived: boolean;
-  paidToMaster: boolean;
-  paymentInSol?: number;
-  topup?: AiraloTopupOrder
-}
+// interface TopupsOrder {
+//   orderId: string;
+//   ppPublicKey: string;
+//   iccid: string;
+//   quantity: number;
+//   package_id: string;
+//   package_price: string;
+//   paymentReceived: boolean;
+//   paidToMaster: boolean;
+//   paymentInSol?: number;
+//   topup?: AiraloTopupOrder
+// }
 
 let solanaService: SolanaService;
 let airaloWrapper: AiraloWrapper;
 
 async function main() {
-  db = await initializeFirebase(); // Wait for Firebase to be initialized
+  db = await initializeFirebase(); 
 
   solanaService = new SolanaService();
 
-  // Now that Firebase is initialized, initialize services that depend on it.
-  airaloWrapper = new AiraloWrapper(db); // Initialize AiraloWrapper with the db instance
+  airaloWrapper = new AiraloWrapper(db); 
   await airaloWrapper.initialize();
 
+  console.log("Done airaloWrapper");
+
   const orderHandler = new OrderHandler(db, solanaService, airaloWrapper);
+  const topupHandler = new TopupHandler(db, solanaService, airaloWrapper);
+
+  // === PAYMENT PROFILE HANDLER ===
 
   // User must have payment profile as unique identifier to manage payment and esim subcription
   app.post('/create-payment-profile', async (req: Request, res: Response) => {
@@ -67,103 +72,8 @@ async function main() {
   app.get('/order/:orderId', orderHandler.queryOrder);
 
   // Endpoint to create a new top-up order
-  app.post('/topup', async (req: Request, res: Response) => {
-    try {
-      const orderId = Math.random().toString(36).substring(21); 
-      const { ppPublicKey, package_id, iccid, package_price } = req.body;
-
-      const paymentProfileSnapshot = await db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
-      if (!paymentProfileSnapshot.exists()) {
-        return res.status(400).json({ error: 'payment profile not found' });
-      }
-
-      if (!package_id || iccid == undefined) {
-        return res.status(400).json({ error: 'Missing required parameters: package_id, quantity, iccid' });
-      }
-
-      const order: TopupsOrder = {
-        orderId,
-        ppPublicKey,
-        iccid,
-        quantity: 1,    
-        package_id,    
-        package_price,
-        paymentReceived: false,
-        paidToMaster: false,
-      };
-
-      await db.ref(`/topup_orders/${orderId}`).set(order);
-
-      const paymentCheckDuration = 600000; // 10 minutes
-      const pollingInterval = 30000; // Poll every 10 seconds
-      const startTime = Date.now();
-
-      const paymentCheckInterval = setInterval(async () => {
-        // Check if the total duration has passed
-        if (Date.now() - startTime > paymentCheckDuration) {
-          console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
-          clearInterval(paymentCheckInterval);
-          return;
-        }
-    
-        try {
-          // Check if payment was received
-          const { enoughReceived, solBalance } = await solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-          order.paymentInSol = solBalance;
-          console.log(`processing order ${order.orderId}`, enoughReceived, solBalance)
-          if (enoughReceived) {
-            console.log(`Payment received for order ${orderId}.`);
-            clearInterval(paymentCheckInterval);
-    
-            // Retrieve the latest order data before updating
-            const latestOrderSnapshot = await db.ref(`/topup_orders/${orderId}`).once('value');
-            const latestOrder = latestOrderSnapshot.val() as TopupsOrder;
-    
-            // Only proceed if payment hasn't been processed by another check instance (unlikely but good practice)
-            if (!latestOrder.paymentReceived) {
-              latestOrder.paymentReceived = true;
-              // const topup = await airaloWrapper.createTopupOrder({ iccid, package_id, description: "" });
-              
-              // latestOrder.topup = topup;
-              await db.ref(`/topup_orders/${orderId}`).set(latestOrder);
-              // await updatePaymentProfileWithOrder(ppPublicKey, orderId);
-            }
-    
-            
-            if (latestOrder.paymentReceived) {
-              const privateKey = paymentProfileSnapshot.val().privateKey;
-              const sig = await solanaService.aggregatePaymentToMasterWallet(privateKey, parseFloat(order.package_price));
-              if (sig) {
-                latestOrder.paidToMaster = true;
-                await db.ref(`/orders/${orderId}`).set(latestOrder);
-              } else {
-                console.error(`Failed to aggregate payment to master wallet for order ${orderId}.`);
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Error processing order payment for order ${orderId}:`, error);
-          // Depending on error handling requirements, you might want to stop the interval here
-          clearInterval(paymentCheckInterval)
-        }
-      }, pollingInterval);
-
-      // const topupOrderParams: AiraloTopupOrderParams = {
-      //   package_id,
-      //   iccid,
-      //   description
-      // };
-
-      // const orderResult: AiraloOrder = await airaloWrapper.createTopupOrder(topupOrderParams);
-
-      // res.status(201).json(orderResult);
-    } catch (error: any) {
-      console.error("Error creating top-up order:", error);
-      // Check if the error has a message property for a more informative response
-      const errorMessage = error.message || "Failed to create top-up order";
-      res.status(500).json({ error: errorMessage });
-    }
-  });
+  app.post('/topup', topupHandler.createTopupOrder);
+ 
 
   // Endpoint to get available top-up packages for a SIM
   app.get('/sim/:iccid/topups', async (req: Request, res: Response) => {
@@ -222,11 +132,12 @@ async function main() {
   app.get('/health', (req, res) => {
     res.send("OK");
   });
-
+  console.log("Listen");
   const port = parseInt(process.env.PORT || '3000');
   app.listen(port, () => {
     console.log(`listening on port ${port}`);
   });
+  console.log("Listen done");
 }
 
 // Call the main async function to start the application
