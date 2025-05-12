@@ -24,6 +24,20 @@ const testPublicKey = 'Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76';
 //     const result = await solanaService.checkSolanaPayment(testPublicKey, '10');
 //     expect(result.enoughReceived).toBe(true);
 //   });
+// npm test -- -t "usd-to-sol-unit"
+(0, globals_1.it)('usd-to-sol-unit', () => __awaiter(void 0, void 0, void 0, function* () {
+    let solanaService;
+    solanaService = new solanaService_1.SolanaService();
+    const priceInUSD = 1.53;
+    const solAmount = yield solanaService.convertUSDToSOL(priceInUSD);
+    console.log(`${priceInUSD} $ worth of SOL is ${solAmount} SOL`);
+}));
+(0, globals_1.it)('should return true if the account has more than 10$ worth of SOL', () => __awaiter(void 0, void 0, void 0, function* () {
+    let solanaService;
+    solanaService = new solanaService_1.SolanaService();
+    const result = yield solanaService.checkSolanaPayment(testPublicKey, '10');
+    (0, globals_1.expect)(result.enoughReceived).toBe(true);
+}));
 //   it('should return false if there is not enough balance', async () => {
 //       const result = await solanaService.checkSolanaPayment(testPublicKey, '1000000');
 //       expect(result.enoughReceived).toBe(false);

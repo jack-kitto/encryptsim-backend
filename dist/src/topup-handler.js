@@ -136,9 +136,9 @@ class TopupHandler {
     }
     processPayment(order) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { enoughReceived, solBalance } = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-            order.paymentInSol = solBalance;
-            console.log(`processing order ${order.orderId}`, enoughReceived, solBalance);
+            const { enoughReceived, expectedAmountSOL } = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+            order.paymentInSol = expectedAmountSOL;
+            console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
             if (enoughReceived) {
                 console.log(`Payment received for order ${order.orderId}.`);
                 order = yield this.updateOrderStatus(order, 'paid');

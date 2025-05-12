@@ -165,9 +165,9 @@ export class TopupHandler {
     }
 
     public async processPayment(order: TopupsOrder): Promise<TopupsOrder> {
-        const { enoughReceived, solBalance } = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-        order.paymentInSol = solBalance;
-        console.log(`processing order ${order.orderId}`, enoughReceived, solBalance);
+        const { enoughReceived, expectedAmountSOL } = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+        order.paymentInSol = expectedAmountSOL;
+        console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
         if (enoughReceived) {
             console.log(`Payment received for order ${order.orderId}.`);
             order = await this.updateOrderStatus(order, 'paid');
