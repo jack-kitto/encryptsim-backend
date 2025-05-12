@@ -1,9 +1,16 @@
 import fetch from 'node-fetch';
+import { OrderHandler } from '../src/order-handler';
+import { DBHandler, initializeFirebase } from '../src/helper';
+import { SolanaService } from '../src/services/solanaService';
+import { config } from "dotenv"
+
+config()
 
 const API_URL = 'http://localhost:3000'; // Assuming your app runs on this port
 
 describe('order', () => {
 
+  // npm test -- -t "full-integration"
   it('full-integration', async () => {
     // --- START CUSTOM REQUEST BODY ---
     // Replace with your actual test data for the /order POST request
@@ -77,4 +84,22 @@ describe('order', () => {
     console.log('Final Order Sim:', orderStatus.sim);
 
   }, 11 * 60 * 1000); // Set Jest timeout for the test case to be longer than the polling timeout
+
+  // npm test -- -t "solana-payment-unit"
+  it('solana-payment-unit', async () => {
+    const db = await initializeFirebase()
+    const solanaService = new SolanaService()
+    const orderHandler = new OrderHandler(db, solanaService, null)
+    const dbHandler = new DBHandler(db)
+    const order_id = "d5885499-4b44-4195-8908-1f1335104008";
+
+    let order = await orderHandler.getOrder(order_id)
+    const pp = await dbHandler.getPaymentProfile(order.ppPublicKey)
+
+    order = await orderHandler.payToMaster(order, pp)
+
+    // check if order status has been changed to paid_to_master
+    expect(order.status).toBe('paid_to_master')
+  }, 5 * 60 * 1000)
+
 });

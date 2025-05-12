@@ -10,6 +10,14 @@ describe('SolanaService.checkSolanaPayment', () => {
   let solanaService: SolanaService;
   solanaService = new SolanaService();
 
+  // npm test -- -t "usd-to-sol-unit"
+  it('usd-to-sol-unit', async () => {
+    const priceInUSD = 1.53
+
+    const solAmount = await solanaService.convertUSDToSOL(priceInUSD);
+    console.log(`${priceInUSD} $ worth of SOL is ${solAmount} SOL`);
+  })
+
   it('should return true if the account has more than 10$ worth of SOL', async () => {
     const result = await solanaService.checkSolanaPayment(testPublicKey, '10');
     expect(result.enoughReceived).toBe(true);

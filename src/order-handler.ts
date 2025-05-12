@@ -97,18 +97,18 @@ export class OrderHandler {
           order = await this.processPayment(order)
         }
         
-        // if payment has been received, provisioning esims
+        // if payment has been received, pay to master
         if (order.status === 'paid') {
-          order = await this.provisionEsim(order);
-        }
-
-        // if esim provisioned, pay to master
-        if (order.status === 'esim_provisioned') {
           order = await this.payToMaster(order, pp);
         }
 
-        // if paid to master, end this cycle
+        // if paid_to_master, provision esim
         if (order.status === 'paid_to_master') {
+          order = await this.provisionEsim(order);
+        }
+
+        // if esim provisioned, end this cycle
+        if (order.status === 'esim_provisioned') {
           clearInterval(paymentCheckInterval);
         }
       }
@@ -125,9 +125,9 @@ export class OrderHandler {
 
 // === HELPER FUNCTION ===
   public async payToMaster(order: Order, pp: any): Promise<Order> {
-    const sig = await this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, parseFloat(order.package_price));
+    const sig = await this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, order.paymentInSol);
     if (sig) {
-      this.updateOrderStatus(order, 'paid_to_master')
+      await this.updateOrderStatus(order, 'paid_to_master')
     }
 
     return order
@@ -147,9 +147,9 @@ export class OrderHandler {
   }
 
   public async processPayment(order: Order): Promise<Order> {    
-    const { enoughReceived, solBalance } = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-    order.paymentInSol = solBalance;
-    console.log(`processing order ${order.orderId}`, enoughReceived, solBalance);
+    const { enoughReceived, expectedAmountSOL } = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+    order.paymentInSol = expectedAmountSOL;
+    console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
     if (enoughReceived) {
       console.log(`Payment received for order ${order.orderId}.`);
       order = await this.updateOrderStatus(order, 'paid');
@@ -166,7 +166,7 @@ export class OrderHandler {
     return order
   }
 
-  private async getOrder(order_id: string): Promise<Order> {
+  public async getOrder(order_id: string): Promise<Order> {
     const orderSnapshot = await this.db.ref(`/orders/${order_id}`).once('value');
     
     if (!orderSnapshot.exists()) {

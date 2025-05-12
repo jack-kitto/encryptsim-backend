@@ -108,9 +108,9 @@ async function main() {
     
         try {
           // Check if payment was received
-          const { enoughReceived, solBalance } = await solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-          order.paymentInSol = solBalance;
-          console.log(`processing order ${order.orderId}`, enoughReceived, solBalance)
+          const { enoughReceived, expectedAmountSOL } = await solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+          order.paymentInSol = expectedAmountSOL;
+          console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL)
           if (enoughReceived) {
             console.log(`Payment received for order ${orderId}.`);
             clearInterval(paymentCheckInterval);
