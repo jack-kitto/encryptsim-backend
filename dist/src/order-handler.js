@@ -69,16 +69,16 @@ class OrderHandler {
                     if (order.status === 'pending') {
                         order = yield this.processPayment(order);
                     }
-                    // if payment has been received, provisioning esims
+                    // if payment has been received, pay to master
                     if (order.status === 'paid') {
-                        order = yield this.provisionEsim(order);
-                    }
-                    // if esim provisioned, pay to master
-                    if (order.status === 'esim_provisioned') {
                         order = yield this.payToMaster(order, pp);
                     }
-                    // if paid to master, end this cycle
+                    // if paid_to_master, provision esim
                     if (order.status === 'paid_to_master') {
+                        order = yield this.provisionEsim(order);
+                    }
+                    // if esim provisioned, end this cycle
+                    if (order.status === 'esim_provisioned') {
                         clearInterval(paymentCheckInterval);
                     }
                 }
@@ -99,9 +99,9 @@ class OrderHandler {
     // === HELPER FUNCTION ===
     payToMaster(order, pp) {
         return __awaiter(this, void 0, void 0, function* () {
-            const sig = yield this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, parseFloat(order.package_price));
+            const sig = yield this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, order.paymentInSol);
             if (sig) {
-                this.updateOrderStatus(order, 'paid_to_master');
+                yield this.updateOrderStatus(order, 'paid_to_master');
             }
             return order;
         });
@@ -121,9 +121,9 @@ class OrderHandler {
     }
     processPayment(order) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { enoughReceived, solBalance } = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-            order.paymentInSol = solBalance;
-            console.log(`processing order ${order.orderId}`, enoughReceived, solBalance);
+            const { enoughReceived, expectedAmountSOL } = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
+            order.paymentInSol = expectedAmountSOL;
+            console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
             if (enoughReceived) {
                 console.log(`Payment received for order ${order.orderId}.`);
                 order = yield this.updateOrderStatus(order, 'paid');

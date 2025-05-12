@@ -40,15 +40,20 @@ class SolanaService {
             const balance = yield this.connection.getBalance(publicKey);
             console.log("balance: ", balance);
             const solBalance = balance / web3_js_1.LAMPORTS_PER_SOL;
-            // Fetch SOL price from Coingecko
+            // Convert expected amount in USD to SOL
+            const expectedAmountSOL = yield this.convertUSDToSOL(expectedAmountUSDNumber);
+            const enoughReceived = solBalance >= expectedAmountSOL;
+            return { enoughReceived, expectedAmountSOL };
+        });
+    }
+    // TODO: what to do when cannot fetch sol price?
+    convertUSDToSOL(amountUSD) {
+        return __awaiter(this, void 0, void 0, function* () {
             const solPrice = yield this.fetchSolPrice();
             if (!solPrice) {
                 throw new Error("Could not fetch SOL price");
             }
-            // Convert expected amount in USD to SOL
-            const expectedAmountSOL = expectedAmountUSDNumber / solPrice;
-            const enoughReceived = solBalance >= expectedAmountSOL;
-            return { enoughReceived, solBalance };
+            return amountUSD / solPrice;
         });
     }
     fetchSolPrice() {
@@ -67,10 +72,12 @@ class SolanaService {
         return __awaiter(this, void 0, void 0, function* () {
             const sourceWallet = web3_js_1.Keypair.fromSecretKey(new Uint8Array(JSON.parse(sourcePrivateKey)));
             const lamports = amount * web3_js_1.LAMPORTS_PER_SOL;
+            // rounding to the upper lamports
+            const lamportsRounded = Math.ceil(lamports);
             const transaction = new web3_js_1.Transaction().add(web3_js_1.SystemProgram.transfer({
                 fromPubkey: sourceWallet.publicKey,
                 toPubkey: this.masterPublicKey,
-                lamports: lamports,
+                lamports: lamportsRounded,
             }));
             const maxSendRetries = 5;
             const sendRetryInterval = 2000; // 2 seconds
@@ -81,8 +88,12 @@ class SolanaService {
             // Retry sending the transaction
             for (let i = 0; i < maxSendRetries; i++) {
                 try {
-                    console.log(`Attempt ${i + 1} to send transaction...`);
-                    signature = yield this.connection.sendTransaction(transaction, [sourceWallet]);
+                    const { blockhash, lastValidBlockHeight } = yield this.connection.getLatestBlockhash();
+                    transaction.recentBlockhash = blockhash;
+                    console.log(`Attempt ${i + 1} to send transaction on height ${lastValidBlockHeight}`);
+                    signature = yield this.connection.sendTransaction(transaction, [sourceWallet], {
+                        skipPreflight: false,
+                    });
                     console.log(`Transaction sent with signature: ${signature}`);
                     sendError = undefined; // Clear any previous send error
                     break; // Exit send retry loop on success
@@ -102,15 +113,20 @@ class SolanaService {
             // Retry confirming the transaction
             for (let i = 0; i < maxConfirmRetries; i++) {
                 try {
-                    console.log(`Attempt ${i + 1} to confirm transaction ${signature}...`);
-                    const status = yield this.connection.confirmTransaction(signature, 'finalized');
-                    // Check if the transaction is finalized
+                    const { blockhash, lastValidBlockHeight } = yield this.connection.getLatestBlockhash();
+                    console.log(`Attempt ${i + 1} to confirm transaction ${signature} on height ${lastValidBlockHeight}`);
+                    const status = yield this.connection.confirmTransaction({
+                        signature: signature,
+                        blockhash: blockhash,
+                        lastValidBlockHeight: lastValidBlockHeight,
+                    }, 'confirmed');
+                    // Check if the transaction is confirmed
                     if (status.value.err === null) {
-                        console.log(`Transaction ${signature} finalized.`);
+                        console.log(`Transaction ${signature} confirmed.`);
                         return signature; // Return signature on successful finalization
                     }
                     else {
-                        console.warn(`Transaction ${signature} failed to finalize on attempt ${i + 1}:`, status.value.err);
+                        console.warn(`Transaction ${signature} failed to confirm on attempt ${i + 1}:`, status.value.err);
                     }
                 }
                 catch (error) {

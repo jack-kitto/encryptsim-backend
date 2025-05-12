@@ -13,8 +13,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_fetch_1 = __importDefault(require("node-fetch"));
+const order_handler_1 = require("../src/order-handler");
+const helper_1 = require("../src/helper");
+const solanaService_1 = require("../src/services/solanaService");
+const dotenv_1 = require("dotenv");
+(0, dotenv_1.config)();
 const API_URL = 'http://localhost:3000'; // Assuming your app runs on this port
 describe('order', () => {
+    // npm test -- -t "full-integration"
     it('full-integration', () => __awaiter(void 0, void 0, void 0, function* () {
         // --- START CUSTOM REQUEST BODY ---
         // Replace with your actual test data for the /order POST request
@@ -79,5 +85,18 @@ describe('order', () => {
         console.log('Integration test for /order completed successfully.');
         console.log('Final Order Sim:', orderStatus.sim);
     }), 11 * 60 * 1000); // Set Jest timeout for the test case to be longer than the polling timeout
+    // npm test -- -t "solana-payment-unit"
+    it('solana-payment-unit', () => __awaiter(void 0, void 0, void 0, function* () {
+        const db = yield (0, helper_1.initializeFirebase)();
+        const solanaService = new solanaService_1.SolanaService();
+        const orderHandler = new order_handler_1.OrderHandler(db, solanaService, null);
+        const dbHandler = new helper_1.DBHandler(db);
+        const order_id = "d5885499-4b44-4195-8908-1f1335104008";
+        let order = yield orderHandler.getOrder(order_id);
+        const pp = yield dbHandler.getPaymentProfile(order.ppPublicKey);
+        order = yield orderHandler.payToMaster(order, pp);
+        // check if order status has been changed to paid_to_master
+        expect(order.status).toBe('paid_to_master');
+    }), 5 * 60 * 1000);
 });
 //# sourceMappingURL=order.test.js.map
