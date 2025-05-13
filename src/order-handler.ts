@@ -54,7 +54,6 @@ export class OrderHandler {
         return res.status(200).json([]);
     }
 
-
     const orderDetailsPromises = orderIds.map((orderId: string) =>
         this.getOrder(orderId).catch(err => {
             console.error(`Error fetching order ${orderId}:`, err);

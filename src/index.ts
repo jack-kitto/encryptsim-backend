@@ -20,19 +20,6 @@ interface PaymentProfile {
   privateKey: string;
 }
 
-// interface TopupsOrder {
-//   orderId: string;
-//   ppPublicKey: string;
-//   iccid: string;
-//   quantity: number;
-//   package_id: string;
-//   package_price: string;
-//   paymentReceived: boolean;
-//   paidToMaster: boolean;
-//   paymentInSol?: number;
-//   topup?: AiraloTopupOrder
-// }
-
 let solanaService: SolanaService;
 let airaloWrapper: AiraloWrapper;
 
@@ -43,8 +30,6 @@ async function main() {
 
   airaloWrapper = new AiraloWrapper(db); 
   await airaloWrapper.initialize();
-
-  console.log("Done airaloWrapper");
 
   const orderHandler = new OrderHandler(db, solanaService, airaloWrapper);
   const topupHandler = new TopupHandler(db, solanaService, airaloWrapper);
@@ -134,12 +119,12 @@ async function main() {
   app.get('/health', (req, res) => {
     res.send("OK");
   });
-  console.log("Listen");
+
   const port = parseInt(process.env.PORT || '3000');
   app.listen(port, () => {
     console.log(`listening on port ${port}`);
   });
-  console.log("Listen done");
+
 }
 
 // Call the main async function to start the application

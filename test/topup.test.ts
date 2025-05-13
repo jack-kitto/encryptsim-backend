@@ -1,15 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { SolanaService } from '../src/services/solanaService';
-import dotenv from 'dotenv';
-import fetch from 'node-fetch';
-import { OrderHandler } from '../src/order-handler';
 import { DBHandler, initializeFirebase } from '../src/helper';
 import { config } from "dotenv";
 import { TopupHandler, TopupsOrder } from "../src/topup-handler";
 import { v4 as uuidv4 } from 'uuid';
 
-dotenv.config();
+config();
 const testPublicKey = 'Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76'; // ppPublicKey from your sample
 
 describe('TopupHandler Tests', () => { // Changed describe to be more general for topup tests
@@ -21,7 +18,6 @@ describe('TopupHandler Tests', () => { // Changed describe to be more general fo
     console.log("OrderId: ", orderId);
     const solanaService = new SolanaService();
     const sol = await solanaService.convertUSDToSOL(5);
-    console.log("Sol: ", sol);
     const order: TopupsOrder = {
       orderId: orderId,
       ppPublicKey: "Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76",
