@@ -23,22 +23,15 @@ export class SolanaService {
     return { publicKey, privateKey };
   }
 
-  public async checkSolanaPayment(address: string, expectedAmountUSD: string): Promise<{enoughReceived: boolean, expectedAmountSOL: number}> {
-
-    // Convert expected amount from string to number
-    const expectedAmountUSDNumber = parseFloat(expectedAmountUSD);
-
+  public async checkSolanaPayment(address: string, expectedAmountSOL: number): Promise<boolean> {
     const publicKey = new PublicKey(address);
     const balance = await this.connection.getBalance(publicKey);
     console.log("balance: ", balance);
     const solBalance = balance / LAMPORTS_PER_SOL;
 
-    // Convert expected amount in USD to SOL
-    const expectedAmountSOL = await this.convertUSDToSOL(expectedAmountUSDNumber)
-
     const enoughReceived = solBalance >= expectedAmountSOL;
 
-    return { enoughReceived, expectedAmountSOL };
+    return enoughReceived;
   }
 
   // TODO: what to do when cannot fetch sol price?

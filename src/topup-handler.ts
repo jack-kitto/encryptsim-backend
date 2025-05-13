@@ -6,7 +6,7 @@ import { AiraloWrapper, AiraloTopupOrder } from './services/airaloService';
 import { DBHandler } from './helper';
 import { stringify } from 'querystring';
 
-interface TopupsOrder {
+export interface TopupsOrder {
     orderId: string;
     ppPublicKey: string;
     iccid: string;
@@ -14,7 +14,6 @@ interface TopupsOrder {
     package_id: string;
     package_price: string;
     paymentInSol?: number;
-    type: string;
     topup?: AiraloTopupOrder;
     createdAt: string;
     updatedAt: string;
@@ -39,18 +38,15 @@ export class TopupHandler {
 
     public queryPPTopupOrder = async (req: Request, res: Response) => {
         const { ppPublicKey } = req.params;
-        console.log("ppp: ", ppPublicKey);
         const paymentProfileSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
         if (!paymentProfileSnapshot.exists()) {
             return res.status(400).json({ error: 'payment profile not found' });
         }
         const paymentProfileData = paymentProfileSnapshot.val();
-        console.log("Payment Profile Data:", paymentProfileData);
 
         const orderIdsObject = paymentProfileData.orderIds;
 
         const orderIds = Object.values(orderIdsObject);
-        console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
 
         if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
             console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
@@ -68,8 +64,6 @@ export class TopupHandler {
         const orders = (await Promise.all(orderDetailsPromises))
             .filter(order => order !== null);
 
-        console.log("TopupsOrder: ", orders);
-
         const simplifiedOrders = orders.map(order => {
             if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
                 return {
@@ -79,7 +73,7 @@ export class TopupHandler {
                 };
             }
             console.warn('Skipping malformed order object:', order);
-            return null; 
+            return null;
         }).filter(order => order !== null);
 
         console.log("Simplified Topup Orders: ", simplifiedOrders);
@@ -111,7 +105,6 @@ export class TopupHandler {
 
 
     public createTopupOrder = async (req: Request, res: Response) => {
-        console.log("Start1");
         const orderId = uuidv4();
         const { ppPublicKey, package_id, iccid, package_price } = req.body;
 
@@ -120,7 +113,9 @@ export class TopupHandler {
         if (!paymentProfileSnapshot.exists()) {
             return res.status(400).json({ error: 'payment profile not found' });
         }
-        console.log("Start2");
+
+        const parsedUSD = parseFloat(package_price);
+        const paymentInSol = await this.solanaService.convertUSDToSOL(parsedUSD);
 
         const order: TopupsOrder = {
             orderId,
@@ -129,74 +124,60 @@ export class TopupHandler {
             quantity: 1,
             package_id,
             package_price,
-            type: "topup",
+            paymentInSol,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             status: 'pending'
         };
 
         await this.db.ref(`/topup_orders/${orderId}`).set(order);
-        console.log("Start3");
 
         const startTime = Date.now();
-        console.log("Start3.5");
         const paymentCheckInterval = setInterval(async () => {
-            console.log("Start3.75");
             // Check if the total duration has passed
             if (Date.now() - startTime > this.paymentCheckDuration) {
-                console.log("Start4");
-                console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
                 clearInterval(paymentCheckInterval);
                 return;
             }
-            console.log("Start5");
 
             try {
                 // re-fetch order and pp for this cycle
-                console.log("Start6");
                 let order = await this.getTopupOrder(orderId)
                 const pp = await this.dbHandler.getPaymentProfile(order.ppPublicKey)
 
                 // check payment has been received
                 if (order.status === 'pending') {
-                    console.log("Pending");
                     order = await this.processPayment(order)
                 }
 
                 // if payment has been received, provisioning esims
                 if (order.status === 'paid') {
                     order = await this.payToMaster(order, pp);
-                    console.log("Paid");
-                    //await this.updateOrderStatus(order, 'esim_provisioned');
                 }
 
                 // if esim provisioned, pay to master
                 if (order.status === 'paid_to_master') {
                     order = await this.provisionEsim(order);
-                    console.log("paid_to_master");
-                    //await this.updateOrderStatus(order, 'paid_to_master');
                 }
 
                 // if paid to master, end this cycle
                 if (order.status === 'esim_provisioned') {
-                    console.log("esim_provisioned");
                     clearInterval(paymentCheckInterval);
                 }
             }
             catch (error) {
                 console.error(`Error processing order payment for order ${orderId}:`, error);
-                // Depending on error handling requirements, you might want to stop the interval here
                 await this.setOrderError(orderId, error);
                 clearInterval(paymentCheckInterval);
             }
         }, this.pollingInterval)
 
-        res.json({ orderId });
+        res.json({ orderId, paymentInSol });
     }
 
     // === HELPER FUNCTION ===
     public async payToMaster(order: TopupsOrder, pp: any): Promise<TopupsOrder> {
-        const sig = await this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, parseFloat(order.package_price));
+        const sig = await this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, order.paymentInSol);
         if (sig) {
             await this.updateOrderStatus(order, 'paid_to_master')
         }
@@ -218,9 +199,8 @@ export class TopupHandler {
     }
 
     public async processPayment(order: TopupsOrder): Promise<TopupsOrder> {
-        const { enoughReceived, expectedAmountSOL } = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-        order.paymentInSol = expectedAmountSOL;
-        console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
+        const enoughReceived = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
+        console.log(`processing order ${order.orderId}`, enoughReceived);
         if (enoughReceived) {
             console.log(`Payment received for order ${order.orderId}.`);
             order = await this.updateOrderStatus(order, 'paid');
@@ -238,7 +218,7 @@ export class TopupHandler {
         return order
     }
 
-    private async getTopupOrder(order_id: string): Promise<TopupsOrder> {
+    public async getTopupOrder(order_id: string): Promise<TopupsOrder> {
         const orderSnapshot = await this.db.ref(`/topup_orders/${order_id}`).once('value');
 
         if (!orderSnapshot.exists()) {

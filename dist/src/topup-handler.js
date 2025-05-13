@@ -18,16 +18,13 @@ class TopupHandler {
         this.pollingInterval = 30000;
         this.queryPPTopupOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { ppPublicKey } = req.params;
-            console.log("ppp: ", ppPublicKey);
             const paymentProfileSnapshot = yield this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
             if (!paymentProfileSnapshot.exists()) {
                 return res.status(400).json({ error: 'payment profile not found' });
             }
             const paymentProfileData = paymentProfileSnapshot.val();
-            console.log("Payment Profile Data:", paymentProfileData);
             const orderIdsObject = paymentProfileData.orderIds;
             const orderIds = Object.values(orderIdsObject);
-            console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
             if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
                 console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
                 return res.status(200).json([]);
@@ -38,7 +35,6 @@ class TopupHandler {
             }));
             const orders = (yield Promise.all(orderDetailsPromises))
                 .filter(order => order !== null);
-            console.log("TopupsOrder: ", orders);
             const simplifiedOrders = orders.map(order => {
                 if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
                     return {
@@ -72,7 +68,6 @@ class TopupHandler {
             });
         });
         this.createTopupOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            console.log("Start1");
             const orderId = (0, uuid_1.v4)();
             const { ppPublicKey, package_id, iccid, package_price } = req.body;
             // Check if the payment profile exists
@@ -80,7 +75,8 @@ class TopupHandler {
             if (!paymentProfileSnapshot.exists()) {
                 return res.status(400).json({ error: 'payment profile not found' });
             }
-            console.log("Start2");
+            const parsedUSD = parseFloat(package_price);
+            const paymentInSol = yield this.solanaService.convertUSDToSOL(parsedUSD);
             const order = {
                 orderId,
                 ppPublicKey,
@@ -88,61 +84,47 @@ class TopupHandler {
                 quantity: 1,
                 package_id,
                 package_price,
-                type: "topup",
+                paymentInSol,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 status: 'pending'
             };
             yield this.db.ref(`/topup_orders/${orderId}`).set(order);
-            console.log("Start3");
             const startTime = Date.now();
-            console.log("Start3.5");
             const paymentCheckInterval = setInterval(() => __awaiter(this, void 0, void 0, function* () {
-                console.log("Start3.75");
                 // Check if the total duration has passed
                 if (Date.now() - startTime > this.paymentCheckDuration) {
-                    console.log("Start4");
-                    console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
                     clearInterval(paymentCheckInterval);
                     return;
                 }
-                console.log("Start5");
                 try {
                     // re-fetch order and pp for this cycle
-                    console.log("Start6");
                     let order = yield this.getTopupOrder(orderId);
                     const pp = yield this.dbHandler.getPaymentProfile(order.ppPublicKey);
                     // check payment has been received
                     if (order.status === 'pending') {
-                        console.log("Pending");
                         order = yield this.processPayment(order);
                     }
                     // if payment has been received, provisioning esims
                     if (order.status === 'paid') {
                         order = yield this.payToMaster(order, pp);
-                        console.log("Paid");
-                        //await this.updateOrderStatus(order, 'esim_provisioned');
                     }
                     // if esim provisioned, pay to master
                     if (order.status === 'paid_to_master') {
                         order = yield this.provisionEsim(order);
-                        console.log("paid_to_master");
-                        //await this.updateOrderStatus(order, 'paid_to_master');
                     }
                     // if paid to master, end this cycle
                     if (order.status === 'esim_provisioned') {
-                        console.log("esim_provisioned");
                         clearInterval(paymentCheckInterval);
                     }
                 }
                 catch (error) {
                     console.error(`Error processing order payment for order ${orderId}:`, error);
-                    // Depending on error handling requirements, you might want to stop the interval here
                     yield this.setOrderError(orderId, error);
                     clearInterval(paymentCheckInterval);
                 }
             }), this.pollingInterval);
-            res.json({ orderId });
+            res.json({ orderId, paymentInSol });
         });
         this.db = db;
         this.solanaService = solanaService;
@@ -152,7 +134,7 @@ class TopupHandler {
     // === HELPER FUNCTION ===
     payToMaster(order, pp) {
         return __awaiter(this, void 0, void 0, function* () {
-            const sig = yield this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, parseFloat(order.package_price));
+            const sig = yield this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, order.paymentInSol);
             if (sig) {
                 yield this.updateOrderStatus(order, 'paid_to_master');
             }
@@ -174,9 +156,8 @@ class TopupHandler {
     }
     processPayment(order) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { enoughReceived, expectedAmountSOL } = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-            order.paymentInSol = expectedAmountSOL;
-            console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
+            const enoughReceived = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
+            console.log(`processing order ${order.orderId}`, enoughReceived);
             if (enoughReceived) {
                 console.log(`Payment received for order ${order.orderId}.`);
                 order = yield this.updateOrderStatus(order, 'paid');

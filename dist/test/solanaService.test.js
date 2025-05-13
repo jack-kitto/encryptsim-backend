@@ -27,17 +27,19 @@ const testPublicKey = 'Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76';
         console.log(`${priceInUSD} $ worth of SOL is ${solAmount} SOL`);
     }));
     (0, globals_1.it)('should return true if the account has more than 10$ worth of SOL', () => __awaiter(void 0, void 0, void 0, function* () {
-        const result = yield solanaService.checkSolanaPayment(testPublicKey, '10');
-        (0, globals_1.expect)(result.enoughReceived).toBe(true);
+        const paymentInSol = yield solanaService.convertUSDToSOL(10);
+        const result = yield solanaService.checkSolanaPayment(testPublicKey, paymentInSol);
+        (0, globals_1.expect)(result).toBe(true);
     }));
     (0, globals_1.it)('should return false if there is not enough balance', () => __awaiter(void 0, void 0, void 0, function* () {
-        const result = yield solanaService.checkSolanaPayment(testPublicKey, '1000000');
-        (0, globals_1.expect)(result.enoughReceived).toBe(false);
+        const paymentInSol = yield solanaService.convertUSDToSOL(1000000);
+        const result = yield solanaService.checkSolanaPayment(testPublicKey, paymentInSol);
+        (0, globals_1.expect)(result).toBe(false);
     }));
     (0, globals_1.it)('should handle errors during API call and throw the error', () => __awaiter(void 0, void 0, void 0, function* () {
         const invalidAddress = 'AbcdEFgHiJkLmNoPqrStUvWxYz1234567890';
         try {
-            yield solanaService.checkSolanaPayment(invalidAddress, '0.005');
+            yield solanaService.checkSolanaPayment(invalidAddress, 0.005);
         }
         catch (error) {
             (0, globals_1.expect)(error.message).toContain("Non-base58 character");

@@ -12,7 +12,6 @@ interface Order {
   package_id: string;
   package_price: string;
   paymentInSol?: number;
-  type: string;
   sim?: SimOrder;
   createdAt: string;
   updatedAt: string;
@@ -102,10 +101,7 @@ export class OrderHandler {
       });
     }
 
-    res.status(204).json({
-      orderId: order.orderId,
-      status: order.status
-    })
+    res.status(204)
   }
  
   public createOrder = async (req: Request, res: Response) => {
@@ -118,13 +114,16 @@ export class OrderHandler {
       return res.status(400).json({ error: 'payment profile not found' });
     }
 
+    const parsedUSD = parseFloat(package_price)
+    const paymentInSol = await this.solanaService.convertUSDToSOL(parsedUSD)
+
     const order: Order = {
       orderId,
       ppPublicKey,
       quantity,
       package_id,
       package_price,
-      type: "sim",
+      paymentInSol,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'pending',
@@ -173,7 +172,10 @@ export class OrderHandler {
       }
     }, this.pollingInterval)
 
-    res.json({ orderId });
+    res.json({ 
+      orderId,
+      paymentInSol
+    });
   }
 
 // === HELPER FUNCTION ===
@@ -200,9 +202,8 @@ export class OrderHandler {
   }
 
   public async processPayment(order: Order): Promise<Order> {    
-    const { enoughReceived, expectedAmountSOL } = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-    order.paymentInSol = expectedAmountSOL;
-    console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
+    const enoughReceived = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
+    console.log(`processing order ${order.orderId}`, enoughReceived, order.paymentInSol);
     if (enoughReceived) {
       console.log(`Payment received for order ${order.orderId}.`);
       order = await this.updateOrderStatus(order, 'paid');

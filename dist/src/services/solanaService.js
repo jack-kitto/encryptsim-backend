@@ -32,18 +32,14 @@ class SolanaService {
             return { publicKey, privateKey };
         });
     }
-    checkSolanaPayment(address, expectedAmountUSD) {
+    checkSolanaPayment(address, expectedAmountSOL) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Convert expected amount from string to number
-            const expectedAmountUSDNumber = parseFloat(expectedAmountUSD);
             const publicKey = new web3_js_1.PublicKey(address);
             const balance = yield this.connection.getBalance(publicKey);
             console.log("balance: ", balance);
             const solBalance = balance / web3_js_1.LAMPORTS_PER_SOL;
-            // Convert expected amount in USD to SOL
-            const expectedAmountSOL = yield this.convertUSDToSOL(expectedAmountUSDNumber);
             const enoughReceived = solBalance >= expectedAmountSOL;
-            return { enoughReceived, expectedAmountSOL };
+            return enoughReceived;
         });
     }
     // TODO: what to do when cannot fetch sol price?
