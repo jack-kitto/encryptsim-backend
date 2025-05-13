@@ -6,18 +6,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 const testPublicKey = 'Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76';
 
-// describe('SolanaService.checkSolanaPayment', () => {
-//   let solanaService: SolanaService;
-//   solanaService = new SolanaService();
+describe('SolanaService.checkSolanaPayment', () => {
+  let solanaService: SolanaService;
+  solanaService = new SolanaService();
 
-//   it('should return true if the account has more than 10$ worth of SOL', async () => {
-//     const result = await solanaService.checkSolanaPayment(testPublicKey, '10');
-//     expect(result.enoughReceived).toBe(true);
-//   });
   // npm test -- -t "usd-to-sol-unit"
   it('usd-to-sol-unit', async () => {
-    let solanaService: SolanaService;
-    solanaService = new SolanaService();
     const priceInUSD = 1.53
 
     const solAmount = await solanaService.convertUSDToSOL(priceInUSD);
@@ -25,27 +19,25 @@ const testPublicKey = 'Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76';
   })
 
   it('should return true if the account has more than 10$ worth of SOL', async () => {
-    let solanaService: SolanaService;
-    solanaService = new SolanaService();
     const result = await solanaService.checkSolanaPayment(testPublicKey, '10');
     expect(result.enoughReceived).toBe(true);
   });
 
-//   it('should return false if there is not enough balance', async () => {
-//       const result = await solanaService.checkSolanaPayment(testPublicKey, '1000000');
+  it('should return false if there is not enough balance', async () => {
+      const result = await solanaService.checkSolanaPayment(testPublicKey, '1000000');
 
-//       expect(result.enoughReceived).toBe(false);
-//   });
+      expect(result.enoughReceived).toBe(false);
+  });
 
-//   it('should handle errors during API call and throw the error', async () => {
-//     const invalidAddress = 'AbcdEFgHiJkLmNoPqrStUvWxYz1234567890';
-//     try{
-//         await solanaService.checkSolanaPayment(invalidAddress, '0.005')
-//     }catch(error: any){
-//         expect(error.message).toContain("Non-base58 character");
-//     }
-//   });
-// });
+  it('should handle errors during API call and throw the error', async () => {
+    const invalidAddress = 'AbcdEFgHiJkLmNoPqrStUvWxYz1234567890';
+    try{
+        await solanaService.checkSolanaPayment(invalidAddress, '0.005')
+    }catch(error: any){
+        expect(error.message).toContain("Non-base58 character");
+    }
+  });
+});
 
 describe('SolanaService.aggregatePaymentToMasterWallet integration test', () => {
     let solanaService: SolanaService;
@@ -56,8 +48,8 @@ describe('SolanaService.aggregatePaymentToMasterWallet integration test', () => 
         // Replace with your actual test data for the aggregatePaymentToMasterWallet function
         // This requires a source wallet with a small amount of SOL to transfer.
         const customAggregateParams = {
-            sourcePrivateKey: '[10,47,70,24,142,244,116,249,122,235,194,89,13,177,74,8,92,192,113,76,164,253,15,176,46,174,188,148,139,107,194,158,88,200,156,118,47,139,27,169,174,72,230,29,133,55,80,1,121,118,89,80,79,81,107,185,112,92,207,130,128,210,191,96]',
-            amount: 2,
+            sourcePrivateKey: '[227,99,211,229,217,103,48,198,45,222,160,117,214,71,175,108,144,30,211,25,28,233,97,216,215,111,224,159,83,123,50,194,218,185,177,203,8,10,13,109,33,7,194,19,210,85,101,7,176,51,204,105,65,104,84,129,161,71,213,141,231,7,4,245]',
+            amount: 0.001,
         };
         // --- END CUSTOM PARAMS ---
 

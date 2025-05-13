@@ -51,7 +51,7 @@ class OrderHandler {
                 return null;
             }).filter(order => order !== null);
             console.log("Simplified Topup Orders: ", simplifiedOrders);
-            res.status(200).json("");
+            res.status(200).json(simplifiedOrders);
         });
         this.queryOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { orderId } = req.params;
