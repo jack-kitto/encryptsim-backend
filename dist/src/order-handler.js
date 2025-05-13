@@ -29,10 +29,7 @@ class OrderHandler {
                     sim: order.sim
                 });
             }
-            res.status(204).json({
-                orderId: order.orderId,
-                status: order.status
-            });
+            res.status(204);
         });
         this.createOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const orderId = (0, uuid_1.v4)();

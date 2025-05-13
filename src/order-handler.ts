@@ -50,10 +50,7 @@ export class OrderHandler {
       });
     }
 
-    res.status(204).json({
-      orderId: order.orderId,
-      status: order.status
-    })
+    res.status(204)
   }
  
   public createOrder = async (req: Request, res: Response) => {
