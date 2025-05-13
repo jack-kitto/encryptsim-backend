@@ -42,12 +42,15 @@ class OrderHandler {
             if (!paymentProfileSnapshot.exists()) {
                 return res.status(400).json({ error: 'payment profile not found' });
             }
+            const parsedUSD = parseFloat(package_price);
+            const paymentInSol = yield this.solanaService.convertUSDToSOL(parsedUSD);
             const order = {
                 orderId,
                 ppPublicKey,
                 quantity,
                 package_id,
                 package_price,
+                paymentInSol,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 status: 'pending',
@@ -89,7 +92,10 @@ class OrderHandler {
                     clearInterval(paymentCheckInterval);
                 }
             }), this.pollingInterval);
-            res.json({ orderId });
+            res.json({
+                orderId,
+                paymentInSol
+            });
         });
         this.db = db;
         this.solanaService = solanaService;
@@ -121,9 +127,8 @@ class OrderHandler {
     }
     processPayment(order) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { enoughReceived, expectedAmountSOL } = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-            order.paymentInSol = expectedAmountSOL;
-            console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
+            const enoughReceived = yield this.solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
+            console.log(`processing order ${order.orderId}`, enoughReceived, order.paymentInSol);
             if (enoughReceived) {
                 console.log(`Payment received for order ${order.orderId}.`);
                 order = yield this.updateOrderStatus(order, 'paid');

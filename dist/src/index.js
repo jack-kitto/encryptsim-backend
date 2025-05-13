@@ -62,6 +62,7 @@ function main() {
                 if (!package_id || iccid == undefined) {
                     return res.status(400).json({ error: 'Missing required parameters: package_id, quantity, iccid' });
                 }
+                const paymentInSol = yield this.solanaService.convertUSDToSOL(package_price);
                 const order = {
                     orderId,
                     ppPublicKey,
@@ -69,6 +70,7 @@ function main() {
                     quantity: 1,
                     package_id,
                     package_price,
+                    paymentInSol,
                     paymentReceived: false,
                     paidToMaster: false,
                 };
@@ -85,9 +87,8 @@ function main() {
                     }
                     try {
                         // Check if payment was received
-                        const { enoughReceived, expectedAmountSOL } = yield solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-                        order.paymentInSol = expectedAmountSOL;
-                        console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL);
+                        const enoughReceived = yield solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
+                        console.log(`processing order ${order.orderId}`, enoughReceived, order.paymentInSol);
                         if (enoughReceived) {
                             console.log(`Payment received for order ${orderId}.`);
                             clearInterval(paymentCheckInterval);

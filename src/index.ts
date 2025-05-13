@@ -81,6 +81,8 @@ async function main() {
         return res.status(400).json({ error: 'Missing required parameters: package_id, quantity, iccid' });
       }
 
+      const paymentInSol = await this.solanaService.convertUSDToSOL(package_price)
+
       const order: TopupsOrder = {
         orderId,
         ppPublicKey,
@@ -88,6 +90,7 @@ async function main() {
         quantity: 1,    
         package_id,    
         package_price,
+        paymentInSol,
         paymentReceived: false,
         paidToMaster: false,
       };
@@ -108,9 +111,8 @@ async function main() {
     
         try {
           // Check if payment was received
-          const { enoughReceived, expectedAmountSOL } = await solanaService.checkSolanaPayment(order.ppPublicKey, order.package_price);
-          order.paymentInSol = expectedAmountSOL;
-          console.log(`processing order ${order.orderId}`, enoughReceived, expectedAmountSOL)
+          const enoughReceived = await solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
+          console.log(`processing order ${order.orderId}`, enoughReceived, order.paymentInSol)
           if (enoughReceived) {
             console.log(`Payment received for order ${orderId}.`);
             clearInterval(paymentCheckInterval);
