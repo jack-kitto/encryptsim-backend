@@ -67,6 +67,8 @@ function main() {
         app.get('/order/:orderId', orderHandler.queryOrder);
         // Endpoint to create a new top-up order
         app.post('/topup', topupHandler.createTopupOrder);
+        app.get('/payment-profile/topup/:ppPublicKey', topupHandler.queryPPTopupOrder);
+        app.get('/payment-profile/sim/:ppPublicKey', orderHandler.queryPPOrder);
         // Endpoint to get available top-up packages for a SIM
         app.get('/sim/:iccid/topups', (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {

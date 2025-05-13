@@ -99,6 +99,35 @@ class MockAiraloWrapper {
             }
         });
     }
+    // Mock implementation of the createTopupOrder method
+    createTopupOrder(orderDetails // Keep the expected signature
+    ) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log("MockAiraloService.placeOrder called with:", orderDetails);
+            try {
+                // Read the content of the mock JSON file
+                const response = yield fs.readFile(this.mockDataPath, 'utf-8');
+                // Parse the JSON content
+                const data_json = JSON.stringify(response);
+                const parsed_sim = JSON.parse(data_json);
+                const topups = parsed_sim.data.topups;
+                const topup = topups[0];
+                console.log('received sims: ', topups);
+                return {
+                    id: topup.id,
+                    qrcode_installation: topup.qrcode_installation,
+                    package_id: topup.package_id,
+                    data: topup.data
+                };
+            }
+            catch (error) {
+                console.error("Error reading or parsing mock data file:", this.mockDataPath, error);
+                // Depending on your testing needs, you might want to throw the error
+                // or return a specific error structure.
+                throw new Error(`Failed to load mock data from ${this.mockDataPath}: ${error}`);
+            }
+        });
+    }
 }
 exports.MockAiraloWrapper = MockAiraloWrapper;
 //# sourceMappingURL=mockAiraloWrapper.js.map

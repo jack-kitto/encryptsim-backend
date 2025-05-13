@@ -12,6 +12,7 @@ interface Order {
   package_id: string;
   package_price: string;
   paymentInSol?: number;
+  type: string;
   sim?: SimOrder;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +34,57 @@ export class OrderHandler {
     this.airaloWrapper = airaloWrapper;
     this.dbHandler = new DBHandler(this.db);
   }
+
+  public queryPPOrder = async (req: Request, res: Response) => {
+    const { ppPublicKey } = req.params;
+    console.log("ppp: ", ppPublicKey);
+    const paymentProfileSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+    if (!paymentProfileSnapshot.exists()) {
+        return res.status(400).json({ error: 'payment profile not found' });
+    }
+    const paymentProfileData = paymentProfileSnapshot.val();
+    console.log("Payment Profile Data:", paymentProfileData);
+
+    const orderIdsObject = paymentProfileData.orderIds;
+
+    const orderIds = Object.values(orderIdsObject);
+    console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
+
+    if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
+        console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
+        return res.status(200).json([]);
+    }
+
+
+    const orderDetailsPromises = orderIds.map((orderId: string) =>
+        this.getOrder(orderId).catch(err => {
+            console.error(`Error fetching order ${orderId}:`, err);
+            return null;
+        })
+    );
+
+    const orders = (await Promise.all(orderDetailsPromises))
+        .filter(order => order !== null);
+
+    console.log("TopupsOrder: ", orders);
+
+    const simplifiedOrders = orders.map(order => {
+      if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
+          return {
+              orderId: order.orderId,
+              package_id: order.package_id,
+              iccid: order.sim.iccid
+          };
+      }
+      console.warn('Skipping malformed order object:', order);
+      return null; 
+  }).filter(order => order !== null);
+
+  console.log("Simplified Topup Orders: ", simplifiedOrders);
+
+  res.status(200).json("");
+
+}
 
   public queryOrder = async (req: Request, res: Response) => {
     const { orderId } = req.params;
@@ -72,6 +124,7 @@ export class OrderHandler {
       quantity,
       package_id,
       package_price,
+      type: "sim",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'pending',

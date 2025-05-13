@@ -4,8 +4,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { SolanaService } from './services/solanaService';
 import { AiraloWrapper, AiraloTopupOrder } from './services/airaloService';
 import { DBHandler } from './helper';
+import { stringify } from 'querystring';
 
-interface TopupsOrder { 
+interface TopupsOrder {
     orderId: string;
     ppPublicKey: string;
     iccid: string;
@@ -13,6 +14,7 @@ interface TopupsOrder {
     package_id: string;
     package_price: string;
     paymentInSol?: number;
+    type: string;
     topup?: AiraloTopupOrder;
     createdAt: string;
     updatedAt: string;
@@ -35,7 +37,58 @@ export class TopupHandler {
         this.dbHandler = new DBHandler(this.db);
     }
 
-    public queryOrder = async (req: Request, res: Response) => {
+    public queryPPTopupOrder = async (req: Request, res: Response) => {
+        const { ppPublicKey } = req.params;
+        console.log("ppp: ", ppPublicKey);
+        const paymentProfileSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+        if (!paymentProfileSnapshot.exists()) {
+            return res.status(400).json({ error: 'payment profile not found' });
+        }
+        const paymentProfileData = paymentProfileSnapshot.val();
+        console.log("Payment Profile Data:", paymentProfileData);
+
+        const orderIdsObject = paymentProfileData.orderIds;
+
+        const orderIds = Object.values(orderIdsObject);
+        console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
+
+        if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
+            console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
+            return res.status(200).json([]);
+        }
+
+
+        const orderDetailsPromises = orderIds.map((orderId: string) =>
+            this.getTopupOrder(orderId).catch(err => {
+                console.error(`Error fetching order ${orderId}:`, err);
+                return null;
+            })
+        );
+
+        const orders = (await Promise.all(orderDetailsPromises))
+            .filter(order => order !== null);
+
+        console.log("TopupsOrder: ", orders);
+
+        const simplifiedOrders = orders.map(order => {
+            if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
+                return {
+                    orderId: order.orderId,
+                    package_id: order.package_id,
+                    iccid: order.iccid
+                };
+            }
+            console.warn('Skipping malformed order object:', order);
+            return null; 
+        }).filter(order => order !== null);
+
+        console.log("Simplified Topup Orders: ", simplifiedOrders);
+
+        res.status(200).json("");
+
+    }
+
+    public queryTopOrder = async (req: Request, res: Response) => {
         const { orderId } = req.params;
         const order = await this.getTopupOrder(orderId)
 
@@ -77,6 +130,7 @@ export class TopupHandler {
             quantity: 1,
             package_id,
             package_price,
+            type: "topup",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             status: 'pending'
@@ -84,7 +138,7 @@ export class TopupHandler {
 
         await this.db.ref(`/topup_orders/${orderId}`).set(order);
         console.log("Start3");
-    
+
         const startTime = Date.now();
         console.log("Start3.5");
         const paymentCheckInterval = setInterval(async () => {
@@ -112,21 +166,21 @@ export class TopupHandler {
 
                 // if payment has been received, provisioning esims
                 if (order.status === 'paid') {
-                    //order = await this.provisionEsim(order);
+                    order = await this.payToMaster(order, pp);
                     console.log("Paid");
-                    await this.updateOrderStatus(order, 'esim_provisioned');
+                    //await this.updateOrderStatus(order, 'esim_provisioned');
                 }
 
                 // if esim provisioned, pay to master
-                if (order.status === 'esim_provisioned') {
-                    //order = await this.payToMaster(order, pp);
-                    console.log("esim_provisioned");
-                    await this.updateOrderStatus(order, 'paid_to_master');
+                if (order.status === 'paid_to_master') {
+                    order = await this.provisionEsim(order);
+                    console.log("paid_to_master");
+                    //await this.updateOrderStatus(order, 'paid_to_master');
                 }
 
                 // if paid to master, end this cycle
-                if (order.status === 'paid_to_master') {
-                    console.log("paid_to_master");
+                if (order.status === 'esim_provisioned') {
+                    console.log("esim_provisioned");
                     clearInterval(paymentCheckInterval);
                 }
             }
@@ -180,7 +234,7 @@ export class TopupHandler {
     public async updateOrderStatus(order: TopupsOrder, status: 'pending' | 'paid' | 'esim_provisioned' | 'paid_to_master' | 'failed'): Promise<TopupsOrder> {
         order.status = status;
         order.updatedAt = new Date().toISOString();
-        await this.db.ref(`/topup_orders/${order.iccid}`).set(order);
+        await this.db.ref(`/topup_orders/${order.orderId}`).set(order);
 
         return order
     }
@@ -198,6 +252,6 @@ export class TopupHandler {
         const order = await this.getTopupOrder(order_id)
         order.errorLog = errorLog
         order.updatedAt = new Date().toISOString();
-        await this.db.ref(`/orders/${order.orderId}`).set(order);
-      }
+        await this.db.ref(`/topup_orders/${order.orderId}`).set(order);
+    }
 }

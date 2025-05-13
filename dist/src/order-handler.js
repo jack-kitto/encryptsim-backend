@@ -16,6 +16,43 @@ class OrderHandler {
     constructor(db, solanaService, airaloWrapper) {
         this.paymentCheckDuration = 600000; // 10 minutes
         this.pollingInterval = 30000; // Poll every 10 seconds
+        this.queryPPOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            const { ppPublicKey } = req.params;
+            console.log("ppp: ", ppPublicKey);
+            const paymentProfileSnapshot = yield this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+            if (!paymentProfileSnapshot.exists()) {
+                return res.status(400).json({ error: 'payment profile not found' });
+            }
+            const paymentProfileData = paymentProfileSnapshot.val();
+            console.log("Payment Profile Data:", paymentProfileData);
+            const orderIdsObject = paymentProfileData.orderIds;
+            const orderIds = Object.values(orderIdsObject);
+            console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
+            if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
+                console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
+                return res.status(200).json([]);
+            }
+            const orderDetailsPromises = orderIds.map((orderId) => this.getOrder(orderId).catch(err => {
+                console.error(`Error fetching order ${orderId}:`, err);
+                return null;
+            }));
+            const orders = (yield Promise.all(orderDetailsPromises))
+                .filter(order => order !== null);
+            console.log("TopupsOrder: ", orders);
+            const simplifiedOrders = orders.map(order => {
+                if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
+                    return {
+                        orderId: order.orderId,
+                        package_id: order.package_id
+                        //iccid: order.sim.iccid
+                    };
+                }
+                console.warn('Skipping malformed order object:', order);
+                return null;
+            }).filter(order => order !== null);
+            console.log("Simplified Topup Orders: ", simplifiedOrders);
+            res.status(200).json("");
+        });
         this.queryOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { orderId } = req.params;
             const order = yield this.getOrder(orderId);
@@ -48,6 +85,7 @@ class OrderHandler {
                 quantity,
                 package_id,
                 package_price,
+                type: "sim",
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 status: 'pending',

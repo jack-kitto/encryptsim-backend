@@ -16,7 +16,44 @@ class TopupHandler {
     constructor(db, solanaService, airaloWrapper) {
         this.paymentCheckDuration = 600000;
         this.pollingInterval = 30000;
-        this.queryOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.queryPPTopupOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            const { ppPublicKey } = req.params;
+            console.log("ppp: ", ppPublicKey);
+            const paymentProfileSnapshot = yield this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+            if (!paymentProfileSnapshot.exists()) {
+                return res.status(400).json({ error: 'payment profile not found' });
+            }
+            const paymentProfileData = paymentProfileSnapshot.val();
+            console.log("Payment Profile Data:", paymentProfileData);
+            const orderIdsObject = paymentProfileData.orderIds;
+            const orderIds = Object.values(orderIdsObject);
+            console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
+            if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
+                console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
+                return res.status(200).json([]);
+            }
+            const orderDetailsPromises = orderIds.map((orderId) => this.getTopupOrder(orderId).catch(err => {
+                console.error(`Error fetching order ${orderId}:`, err);
+                return null;
+            }));
+            const orders = (yield Promise.all(orderDetailsPromises))
+                .filter(order => order !== null);
+            console.log("TopupsOrder: ", orders);
+            const simplifiedOrders = orders.map(order => {
+                if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
+                    return {
+                        orderId: order.orderId,
+                        package_id: order.package_id,
+                        iccid: order.iccid
+                    };
+                }
+                console.warn('Skipping malformed order object:', order);
+                return null;
+            }).filter(order => order !== null);
+            console.log("Simplified Topup Orders: ", simplifiedOrders);
+            res.status(200).json("");
+        });
+        this.queryTopOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { orderId } = req.params;
             const order = yield this.getTopupOrder(orderId);
             if (!order) {
@@ -51,6 +88,7 @@ class TopupHandler {
                 quantity: 1,
                 package_id,
                 package_price,
+                type: "topup",
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 status: 'pending'
@@ -81,19 +119,19 @@ class TopupHandler {
                     }
                     // if payment has been received, provisioning esims
                     if (order.status === 'paid') {
-                        //order = await this.provisionEsim(order);
+                        order = yield this.payToMaster(order, pp);
                         console.log("Paid");
-                        yield this.updateOrderStatus(order, 'esim_provisioned');
+                        //await this.updateOrderStatus(order, 'esim_provisioned');
                     }
                     // if esim provisioned, pay to master
-                    if (order.status === 'esim_provisioned') {
-                        //order = await this.payToMaster(order, pp);
-                        console.log("esim_provisioned");
-                        yield this.updateOrderStatus(order, 'paid_to_master');
+                    if (order.status === 'paid_to_master') {
+                        order = yield this.provisionEsim(order);
+                        console.log("paid_to_master");
+                        //await this.updateOrderStatus(order, 'paid_to_master');
                     }
                     // if paid to master, end this cycle
-                    if (order.status === 'paid_to_master') {
-                        console.log("paid_to_master");
+                    if (order.status === 'esim_provisioned') {
+                        console.log("esim_provisioned");
                         clearInterval(paymentCheckInterval);
                     }
                 }
@@ -151,7 +189,7 @@ class TopupHandler {
         return __awaiter(this, void 0, void 0, function* () {
             order.status = status;
             order.updatedAt = new Date().toISOString();
-            yield this.db.ref(`/topup_orders/${order.iccid}`).set(order);
+            yield this.db.ref(`/topup_orders/${order.orderId}`).set(order);
             return order;
         });
     }
@@ -169,7 +207,7 @@ class TopupHandler {
             const order = yield this.getTopupOrder(order_id);
             order.errorLog = errorLog;
             order.updatedAt = new Date().toISOString();
-            yield this.db.ref(`/orders/${order.orderId}`).set(order);
+            yield this.db.ref(`/topup_orders/${order.orderId}`).set(order);
         });
     }
 }
