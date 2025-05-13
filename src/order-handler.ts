@@ -69,7 +69,7 @@ export class OrderHandler {
     console.log("TopupsOrder: ", orders);
 
     const simplifiedOrders = orders.map(order => {
-      if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
+      if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
           return {
               orderId: order.orderId,
               package_id: order.package_id,
@@ -82,7 +82,7 @@ export class OrderHandler {
 
   console.log("Simplified Topup Orders: ", simplifiedOrders);
 
-  res.status(200).json("");
+  res.status(200).json(simplifiedOrders);
 
 }
 

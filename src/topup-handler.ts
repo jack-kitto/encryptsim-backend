@@ -84,8 +84,7 @@ export class TopupHandler {
 
         console.log("Simplified Topup Orders: ", simplifiedOrders);
 
-        res.status(200).json("");
-
+        res.status(200).json(simplifiedOrders);//To_do
     }
 
     public queryTopOrder = async (req: Request, res: Response) => {

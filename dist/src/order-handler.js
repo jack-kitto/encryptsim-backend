@@ -40,11 +40,11 @@ class OrderHandler {
                 .filter(order => order !== null);
             console.log("TopupsOrder: ", orders);
             const simplifiedOrders = orders.map(order => {
-                if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
+                if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
                     return {
                         orderId: order.orderId,
-                        package_id: order.package_id
-                        //iccid: order.sim.iccid
+                        package_id: order.package_id,
+                        iccid: order.sim.iccid
                     };
                 }
                 console.warn('Skipping malformed order object:', order);
