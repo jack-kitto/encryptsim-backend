@@ -204,12 +204,9 @@ export class AiraloWrapper {
   public async getDataUsage(iccid: string): Promise<any[]> {
     try {
       // console.log("Fetching data from Airalo API for", cacheKey);
-
-      console.log("1");
       const topups = await this.airaloService.getSIMUsage(iccid);
       const data_json = JSON.stringify(topups);
       const parsed_item = JSON.parse(data_json);
-      console.log("usage: ", topups);
       //console.log("data_usage: ", parsed_item.data);
       return parsed_item.data;
 

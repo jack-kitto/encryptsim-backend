@@ -69,12 +69,6 @@ export class TopupHandler {
         for (const order of orders) {
             if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
                 const usageData = await this.airaloWrapper.getDataUsage(order.iccid);
-                // const data: any =  {
-                //     orderId: order.orderId,
-                //     package_id: order.package_id,
-                //     iccid: order.iccid,
-                //     usage_data: usageData
-                // };
                 const newObj = {};
                 newObj["orderId"] = order.orderId;
                 newObj["package_id"] = order.package_id;
@@ -83,29 +77,6 @@ export class TopupHandler {
                 cleanedData.push(newObj);
             }
         }
-
-        // const simplifiedOrders = orders.map(async order => {
-        //     if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
-        //         const usageData = await this.airaloWrapper.getDataUsage(order.iccid);
-        //         const data: any =  {
-        //             orderId: order.orderId,
-        //             package_id: order.package_id,
-        //             iccid: order.iccid,
-        //             usage_data: usageData
-        //         };
-        //         const newObj = {};
-        //         newObj["orderId"] = order.orderId;
-        //         newObj["package_id"] = order.package_id;
-        //         newObj["iccid"] = order.iccid;
-        //         newObj["usage_data"] = usageData;
-        //         cleanedData.push(newObj);
-        //         console.log(cleanedData);
-        //         return newObj;
-
-        //     }
-        //     console.warn('Skipping malformed order object:', order);
-        //     return null;
-        // }).filter(order => order !== null);
 
         console.log("Simplified Topup Orders: ", cleanedData);
 
