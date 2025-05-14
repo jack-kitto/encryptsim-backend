@@ -90,7 +90,6 @@ export class TopupHandler {
         }
 
         if (order.status === 'esim_provisioned') {
-            console.log("Done");
             return res.status(200).json({
                 orderId: order.orderId,
                 status: order.status,

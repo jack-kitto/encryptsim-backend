@@ -56,15 +56,14 @@ class TopupHandler {
                 return res.status(404).json({ message: 'Order not found' });
             }
             if (order.status === 'esim_provisioned') {
+                console.log("Done");
                 return res.status(200).json({
                     orderId: order.orderId,
                     status: order.status,
                     topup: order.topup
                 });
             }
-            // If order exists but is not 'esim_provisioned', send 204 or another appropriate status
-            // For example, sending the current order status might be more informative than 204
-            return res.status(200).json({
+            res.status(204).json({
                 orderId: order.orderId,
                 status: order.status
             });

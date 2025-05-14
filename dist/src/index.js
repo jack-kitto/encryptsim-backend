@@ -24,18 +24,6 @@ let db;
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 (0, dotenv_1.config)();
-// interface TopupsOrder {
-//   orderId: string;
-//   ppPublicKey: string;
-//   iccid: string;
-//   quantity: number;
-//   package_id: string;
-//   package_price: string;
-//   paymentReceived: boolean;
-//   paidToMaster: boolean;
-//   paymentInSol?: number;
-//   topup?: AiraloTopupOrder
-// }
 let solanaService;
 let airaloWrapper;
 function main() {
@@ -44,7 +32,6 @@ function main() {
         solanaService = new solanaService_1.SolanaService();
         airaloWrapper = new airaloService_1.AiraloWrapper(db);
         yield airaloWrapper.initialize();
-        console.log("Done airaloWrapper");
         const orderHandler = new order_handler_1.OrderHandler(db, solanaService, airaloWrapper);
         const topupHandler = new topup_handler_1.TopupHandler(db, solanaService, airaloWrapper);
         // === PAYMENT PROFILE HANDLER ===
@@ -116,12 +103,10 @@ function main() {
         app.get('/health', (req, res) => {
             res.send("OK");
         });
-        console.log("Listen");
         const port = parseInt(process.env.PORT || '3000');
         app.listen(port, () => {
             console.log(`listening on port ${port}`);
         });
-        console.log("Listen done");
     });
 }
 // Call the main async function to start the application
