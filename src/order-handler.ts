@@ -230,9 +230,11 @@ export class OrderHandler {
   }
 
   private async setOrderError(order_id: string, errorLog: string): Promise<void> {
-    const order = await this.getOrder(order_id)
-    order.errorLog = errorLog
-    order.updatedAt = new Date().toISOString();
-    await this.db.ref(`/orders/${order.orderId}`).set(order);
+    const order = await this.getOrder(order_id);
+    if (order) {
+      order.errorLog = errorLog
+      order.updatedAt = new Date().toISOString();
+      await this.db.ref(`/orders/${order.orderId}`).set(order);
+    }
   }
-}
+} 

@@ -81,23 +81,27 @@ export class TopupHandler {
         res.status(200).json(simplifiedOrders);//To_do
     }
 
-    public queryTopupOrder = async (req: Request, res: Response) => {
+    public queryTopOrder = async (req: Request, res: Response) => {
         const { orderId } = req.params;
-        const order = await this.getTopupOrder(orderId)
+        const order = await this.getTopupOrder(orderId);
 
         if (!order) {
-            res.status(404).json({ message: 'Order not found' });
+            return res.status(404).json({ message: 'Order not found' });
         }
 
         if (order.status === 'esim_provisioned') {
-            res.status(200).json({
+            console.log("Done");
+            return res.status(200).json({
                 orderId: order.orderId,
                 status: order.status,
                 topup: order.topup
             });
         }
 
-        res.status(204)
+        res.status(204).json({
+            orderId: order.orderId,
+            status: order.status
+        })
     }
 
 
@@ -164,7 +168,7 @@ export class TopupHandler {
             }
             catch (error) {
                 console.error(`Error processing order payment for order ${orderId}:`, error);
-                await this.setOrderError(orderId, error);
+                await this.setOrderError(orderId, error as string); // Cast error to string
                 clearInterval(paymentCheckInterval);
             }
         }, this.pollingInterval)
@@ -226,8 +230,10 @@ export class TopupHandler {
 
     private async setOrderError(order_id: string, errorLog: string): Promise<void> {
         const order = await this.getTopupOrder(order_id)
-        order.errorLog = errorLog
-        order.updatedAt = new Date().toISOString();
-        await this.db.ref(`/topup_orders/${order.orderId}`).set(order);
+        if (order) { 
+            order.errorLog = errorLog
+            order.updatedAt = new Date().toISOString();
+            await this.db.ref(`/topup_orders/${order.orderId}`).set(order);
+        }
     }
 }
