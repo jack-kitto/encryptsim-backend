@@ -58,7 +58,7 @@ async function main() {
 
   // Endpoint to create a new top-up order
   app.post('/topup', topupHandler.createTopupOrder);
-  app.get('/topup/:orderId', topupHandler.queryTopOrder);
+  app.get('/topup/:orderId', topupHandler.queryTopUpOrder);
 
   app.get('/payment-profile/topup/:ppPublicKey', topupHandler.queryPPTopupOrder);
   app.get('/payment-profile/sim/:ppPublicKey', orderHandler.queryPPOrder);

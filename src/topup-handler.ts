@@ -81,7 +81,7 @@ export class TopupHandler {
         res.status(200).json(simplifiedOrders);//To_do
     }
 
-    public queryTopOrder = async (req: Request, res: Response) => {
+    public queryTopUpOrder = async (req: Request, res: Response) => {
         const { orderId } = req.params;
         const order = await this.getTopupOrder(orderId);
 
