@@ -35,19 +35,48 @@ class TopupHandler {
             }));
             const orders = (yield Promise.all(orderDetailsPromises))
                 .filter(order => order !== null);
-            const simplifiedOrders = orders.map(order => {
+            console.log("Orders: ", orders);
+            let cleanedData = [];
+            for (const order of orders) {
                 if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
-                    return {
-                        orderId: order.orderId,
-                        package_id: order.package_id,
-                        iccid: order.iccid
-                    };
+                    const usageData = yield this.airaloWrapper.getDataUsage(order.iccid);
+                    // const data: any =  {
+                    //     orderId: order.orderId,
+                    //     package_id: order.package_id,
+                    //     iccid: order.iccid,
+                    //     usage_data: usageData
+                    // };
+                    const newObj = {};
+                    newObj["orderId"] = order.orderId;
+                    newObj["package_id"] = order.package_id;
+                    newObj["iccid"] = order.iccid;
+                    newObj["usage_data"] = usageData;
+                    cleanedData.push(newObj);
                 }
-                console.warn('Skipping malformed order object:', order);
-                return null;
-            }).filter(order => order !== null);
-            console.log("Simplified Topup Orders: ", simplifiedOrders);
-            res.status(200).json(simplifiedOrders); //To_do
+            }
+            // const simplifiedOrders = orders.map(async order => {
+            //     if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
+            //         const usageData = await this.airaloWrapper.getDataUsage(order.iccid);
+            //         const data: any =  {
+            //             orderId: order.orderId,
+            //             package_id: order.package_id,
+            //             iccid: order.iccid,
+            //             usage_data: usageData
+            //         };
+            //         const newObj = {};
+            //         newObj["orderId"] = order.orderId;
+            //         newObj["package_id"] = order.package_id;
+            //         newObj["iccid"] = order.iccid;
+            //         newObj["usage_data"] = usageData;
+            //         cleanedData.push(newObj);
+            //         console.log(cleanedData);
+            //         return newObj;
+            //     }
+            //     console.warn('Skipping malformed order object:', order);
+            //     return null;
+            // }).filter(order => order !== null);
+            console.log("Simplified Topup Orders: ", cleanedData);
+            res.status(200).json(cleanedData); //To_do
         });
         this.queryTopUpOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { orderId } = req.params;
@@ -56,7 +85,6 @@ class TopupHandler {
                 return res.status(404).json({ message: 'Order not found' });
             }
             if (order.status === 'esim_provisioned') {
-                console.log("Done");
                 return res.status(200).json({
                     orderId: order.orderId,
                     status: order.status,

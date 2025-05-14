@@ -25,6 +25,8 @@ describe("AiraloService", () => {
     console.log(firstPackage)
   });
 
+  
+
   // it("should call getSIMTopups successfully", async () => {
   //   const iccid = "89852351124620400870";
   //   const packages = await airaloWrapper.getSIMTopups(iccid);

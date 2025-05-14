@@ -78,6 +78,26 @@ function main() {
                 res.status(500).json({ error: errorMessage });
             }
         }));
+        app.get('/sim/:iccid/usage', (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { iccid } = req.params;
+                if (!iccid) {
+                    return res.status(400).json({ error: 'Missing required parameter: iccid' });
+                }
+                const topups = yield airaloWrapper.getDataUsage(iccid);
+                // if (!topups) {
+                //   // This typically means the service encountered an error it couldn't recover from,
+                //   // or the method in the service is designed to return undefined in some error cases.
+                //   return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
+                // }
+                res.json(topups);
+            }
+            catch (error) {
+                console.error(`Error getting top-ups for ICCID ${req.params.iccid}:`, error);
+                const errorMessage = error.message || "Failed to retrieve SIM top-ups";
+                res.status(500).json({ error: errorMessage });
+            }
+        }));
         // GET handler to get packages from getPackagePlans()
         app.get('/packages', (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {

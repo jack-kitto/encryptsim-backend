@@ -18,16 +18,14 @@ class OrderHandler {
         this.pollingInterval = 30000; // Poll every 10 seconds
         this.queryPPOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { ppPublicKey } = req.params;
-            console.log("ppp: ", ppPublicKey);
             const paymentProfileSnapshot = yield this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
             if (!paymentProfileSnapshot.exists()) {
                 return res.status(400).json({ error: 'payment profile not found' });
             }
             const paymentProfileData = paymentProfileSnapshot.val();
-            console.log("Payment Profile Data:", paymentProfileData);
-            const orderIdsObject = paymentProfileData.orderIds;
-            const orderIds = Object.values(orderIdsObject);
-            console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
+            const orderIdsObject = paymentProfileData.orderIds || {};
+            const orderIds = [...new Set(Object.values(orderIdsObject))];
+            //const orderIds = Object.values(orderIdsObject);
             if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
                 console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
                 return res.status(200).json([]);
@@ -38,20 +36,41 @@ class OrderHandler {
             }));
             const orders = (yield Promise.all(orderDetailsPromises))
                 .filter(order => order !== null);
-            console.log("TopupsOrder: ", orders);
-            const simplifiedOrders = orders.map(order => {
+            let cleanedData = [];
+            for (const order of orders) {
                 if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
-                    return {
-                        orderId: order.orderId,
-                        package_id: order.package_id,
-                        iccid: order.sim.iccid
-                    };
+                    console.log(order.orderId);
+                    console.log("iccid: ", order.sim.iccid);
+                    const usageData = yield this.airaloWrapper.getDataUsage(order.sim.iccid);
+                    console.log(111);
+                    console.log("usage: ", usageData);
+                    // const data: any =  {
+                    //     orderId: order.orderId,
+                    //     package_id: order.package_id,
+                    //     iccid: order.iccid,
+                    //     usage_data: usageData
+                    // };
+                    const newObj = {};
+                    newObj["orderId"] = order.orderId;
+                    newObj["package_id"] = order.package_id;
+                    newObj["iccid"] = order.sim.iccid;
+                    newObj["usage_data"] = usageData;
+                    cleanedData.push(newObj);
                 }
-                console.warn('Skipping malformed order object:', order);
-                return null;
-            }).filter(order => order !== null);
-            console.log("Simplified Topup Orders: ", simplifiedOrders);
-            res.status(200).json(simplifiedOrders);
+            }
+            //   const simplifiedOrders = orders.map(order => {
+            //     if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
+            //         return {
+            //             orderId: order.orderId,
+            //             package_id: order.package_id,
+            //             iccid: order.sim.iccid
+            //         };
+            //     }
+            //     console.warn('Skipping malformed order object:', order);
+            //     return null; 
+            // }).filter(order => order !== null);
+            console.log("Simplified Topup Orders: ", cleanedData);
+            res.status(200).json(cleanedData);
         });
         this.queryOrder = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { orderId } = req.params;

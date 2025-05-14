@@ -71,7 +71,6 @@ async function main() {
       if (!iccid) {
         return res.status(400).json({ error: 'Missing required parameter: iccid' });
       }
-
       const topups: AiraloSIMTopup[] = await airaloWrapper.getSIMTopups(iccid);
 
       if (!topups) {
@@ -79,6 +78,30 @@ async function main() {
         // or the method in the service is designed to return undefined in some error cases.
         return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
       }
+
+      res.json(topups);
+
+    } catch (error: any) {
+      console.error(`Error getting top-ups for ICCID ${req.params.iccid}:`, error);
+      const errorMessage = error.message || "Failed to retrieve SIM top-ups";
+      res.status(500).json({ error: errorMessage });
+    }
+  });
+
+  app.get('/sim/:iccid/usage', async (req: Request, res: Response) => {
+    try {
+      const { iccid } = req.params;
+
+      if (!iccid) {
+        return res.status(400).json({ error: 'Missing required parameter: iccid' });
+      }
+      const topups: any = await airaloWrapper.getDataUsage(iccid);
+
+      // if (!topups) {
+      //   // This typically means the service encountered an error it couldn't recover from,
+      //   // or the method in the service is designed to return undefined in some error cases.
+      //   return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
+      // }
 
       res.json(topups);
 
