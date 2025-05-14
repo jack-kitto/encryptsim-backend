@@ -25,7 +25,7 @@ export class OrderHandler {
   private solanaService: SolanaService;
   private airaloWrapper: AiraloWrapper;
   private paymentCheckDuration = 600000; // 10 minutes
-  private pollingInterval = 10000; // Poll every 10 seconds
+  private pollingInterval = 30000; // Poll every 10 seconds
 
   constructor(db : admin.database.Database, solanaService: SolanaService, airaloWrapper: AiraloWrapper) {
     this.db = db;
@@ -33,6 +33,56 @@ export class OrderHandler {
     this.airaloWrapper = airaloWrapper;
     this.dbHandler = new DBHandler(this.db);
   }
+
+  public queryPPOrder = async (req: Request, res: Response) => {
+    const { ppPublicKey } = req.params;
+    console.log("ppp: ", ppPublicKey);
+    const paymentProfileSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+    if (!paymentProfileSnapshot.exists()) {
+        return res.status(400).json({ error: 'payment profile not found' });
+    }
+    const paymentProfileData = paymentProfileSnapshot.val();
+    console.log("Payment Profile Data:", paymentProfileData);
+
+    const orderIdsObject = paymentProfileData.orderIds;
+
+    const orderIds = Object.values(orderIdsObject);
+    console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
+
+    if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
+        console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
+        return res.status(200).json([]);
+    }
+
+    const orderDetailsPromises = orderIds.map((orderId: string) =>
+        this.getOrder(orderId).catch(err => {
+            console.error(`Error fetching order ${orderId}:`, err);
+            return null;
+        })
+    );
+
+    const orders = (await Promise.all(orderDetailsPromises))
+        .filter(order => order !== null);
+
+    console.log("TopupsOrder: ", orders);
+
+    const simplifiedOrders = orders.map(order => {
+      if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
+          return {
+              orderId: order.orderId,
+              package_id: order.package_id,
+              iccid: order.sim.iccid
+          };
+      }
+      console.warn('Skipping malformed order object:', order);
+      return null; 
+  }).filter(order => order !== null);
+
+  console.log("Simplified Topup Orders: ", simplifiedOrders);
+
+  res.status(200).json(simplifiedOrders);
+
+}
 
   public queryOrder = async (req: Request, res: Response) => {
     const { orderId } = req.params;
@@ -180,9 +230,11 @@ export class OrderHandler {
   }
 
   private async setOrderError(order_id: string, errorLog: string): Promise<void> {
-    const order = await this.getOrder(order_id)
-    order.errorLog = errorLog
-    order.updatedAt = new Date().toISOString();
-    await this.db.ref(`/orders/${order.orderId}`).set(order);
+    const order = await this.getOrder(order_id);
+    if (order) {
+      order.errorLog = errorLog
+      order.updatedAt = new Date().toISOString();
+      await this.db.ref(`/orders/${order.orderId}`).set(order);
+    }
   }
-}
+} 

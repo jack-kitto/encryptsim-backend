@@ -36,7 +36,7 @@ export async function initializeFirebase(): Promise<admin.database.Database> {
 
     if (serviceAccount) {
       admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount as any), // Use the fetched service account
+        credential: admin.credential.cert(serviceAccount), // Use the fetched service account
         databaseURL: firebaseDatabaseUrl,
       });
     } else {

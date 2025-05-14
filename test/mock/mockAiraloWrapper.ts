@@ -9,6 +9,11 @@ interface OrderDetails {
   // Add other properties if placeOrder expects them
 }
 
+interface TopupOrderDetails {
+  iccid: string;
+  package_id: string;
+}
+
 export class MockAiraloWrapper {
 
   private mockDataPath = path.join(__dirname,'..', 'mock-data', 'asialink-3days-500mb.json');
@@ -62,4 +67,36 @@ export class MockAiraloWrapper {
       throw new Error(`Failed to load mock packages data from ${this.mockPackagesPath}: ${error}`);
     }
   }
+
+  // Mock implementation of the createTopupOrder method
+  public async createTopupOrder(
+    orderDetails: TopupOrderDetails // Keep the expected signature
+  ): Promise<any> {
+    console.log("MockAiraloService.placeOrder called with:", orderDetails);
+
+    try {
+      // Read the content of the mock JSON file
+      const response = await fs.readFile(this.mockDataPath, 'utf-8');
+      
+      // Parse the JSON content
+      const data_json = JSON.stringify(response);
+      const parsed_sim = JSON.parse(data_json);
+      const topups = parsed_sim.data.topups;
+      const topup = topups[0]
+      console.log('received sims: ', topups)
+
+      return {
+        id: topup.id,
+        qrcode_installation: topup.qrcode_installation,
+        package_id: topup.package_id,
+        data: topup.data
+      };
+    } catch (error) {
+      console.error("Error reading or parsing mock data file:", this.mockDataPath, error);
+      // Depending on your testing needs, you might want to throw the error
+      // or return a specific error structure.
+      throw new Error(`Failed to load mock data from ${this.mockDataPath}: ${error}`);
+    }
+  }
+
 }
