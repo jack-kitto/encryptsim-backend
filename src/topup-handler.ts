@@ -44,9 +44,8 @@ export class TopupHandler {
         }
         const paymentProfileData = paymentProfileSnapshot.val();
 
-        const orderIdsObject = paymentProfileData.orderIds;
-
-        const orderIds = Object.values(orderIdsObject);
+        const orderIdsObject = paymentProfileData.orderIds || {};
+        const orderIds = [...new Set(Object.values(orderIdsObject))];
 
         if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
             console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
@@ -63,25 +62,28 @@ export class TopupHandler {
 
         const orders = (await Promise.all(orderDetailsPromises))
             .filter(order => order !== null);
+        console.log("Orders: ", orders);
 
-        const simplifiedOrders = orders.map(order => {
+        let cleanedData = [];
+
+        for (const order of orders) {
             if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'iccid' in order) {
-                return {
-                    orderId: order.orderId,
-                    package_id: order.package_id,
-                    iccid: order.iccid
-                };
+                const usageData = await this.airaloWrapper.getDataUsage(order.iccid);
+                const newObj = {};
+                newObj["orderId"] = order.orderId;
+                newObj["package_id"] = order.package_id;
+                newObj["iccid"] = order.iccid;
+                newObj["usage_data"] = usageData;
+                cleanedData.push(newObj);
             }
-            console.warn('Skipping malformed order object:', order);
-            return null;
-        }).filter(order => order !== null);
+        }
 
-        console.log("Simplified Topup Orders: ", simplifiedOrders);
+        console.log("Simplified Topup Orders: ", cleanedData);
 
-        res.status(200).json(simplifiedOrders);//To_do
+        res.status(200).json(cleanedData);//To_do
     }
 
-    public queryTopOrder = async (req: Request, res: Response) => {
+    public queryTopUpOrder = async (req: Request, res: Response) => {
         const { orderId } = req.params;
         const order = await this.getTopupOrder(orderId);
 
@@ -90,7 +92,6 @@ export class TopupHandler {
         }
 
         if (order.status === 'esim_provisioned') {
-            console.log("Done");
             return res.status(200).json({
                 orderId: order.orderId,
                 status: order.status,
@@ -230,7 +231,7 @@ export class TopupHandler {
 
     private async setOrderError(order_id: string, errorLog: string): Promise<void> {
         const order = await this.getTopupOrder(order_id)
-        if (order) { 
+        if (order) {
             order.errorLog = errorLog
             order.updatedAt = new Date().toISOString();
             await this.db.ref(`/topup_orders/${order.orderId}`).set(order);

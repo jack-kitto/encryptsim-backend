@@ -27,7 +27,7 @@ export class OrderHandler {
   private paymentCheckDuration = 600000; // 10 minutes
   private pollingInterval = 30000; // Poll every 10 seconds
 
-  constructor(db : admin.database.Database, solanaService: SolanaService, airaloWrapper: AiraloWrapper) {
+  constructor(db: admin.database.Database, solanaService: SolanaService, airaloWrapper: AiraloWrapper) {
     this.db = db;
     this.solanaService = solanaService;
     this.airaloWrapper = airaloWrapper;
@@ -36,53 +36,58 @@ export class OrderHandler {
 
   public queryPPOrder = async (req: Request, res: Response) => {
     const { ppPublicKey } = req.params;
-    console.log("ppp: ", ppPublicKey);
     const paymentProfileSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
     if (!paymentProfileSnapshot.exists()) {
-        return res.status(400).json({ error: 'payment profile not found' });
+      return res.status(400).json({ error: 'payment profile not found' });
     }
     const paymentProfileData = paymentProfileSnapshot.val();
-    console.log("Payment Profile Data:", paymentProfileData);
 
-    const orderIdsObject = paymentProfileData.orderIds;
 
-    const orderIds = Object.values(orderIdsObject);
-    console.log(`Found order keys (IDs): ${orderIds.join(', ')}`);
+    const orderIdsObject = paymentProfileData.orderIds || {};
+    const orderIds = [...new Set(Object.values(orderIdsObject))];
+
+    //const orderIds = Object.values(orderIdsObject);
 
     if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
-        console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
-        return res.status(200).json([]);
+      console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
+      return res.status(200).json([]);
     }
 
     const orderDetailsPromises = orderIds.map((orderId: string) =>
-        this.getOrder(orderId).catch(err => {
-            console.error(`Error fetching order ${orderId}:`, err);
-            return null;
-        })
+      this.getOrder(orderId).catch(err => {
+        console.error(`Error fetching order ${orderId}:`, err);
+        return null;
+      })
     );
 
     const orders = (await Promise.all(orderDetailsPromises))
-        .filter(order => order !== null);
+      .filter(order => order !== null);
 
-    console.log("TopupsOrder: ", orders);
+    let cleanedData = [];
 
-    const simplifiedOrders = orders.map(order => {
+    for (const order of orders) {
       if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
-          return {
-              orderId: order.orderId,
-              package_id: order.package_id,
-              iccid: order.sim.iccid
-          };
+        const usageData = await this.airaloWrapper.getDataUsage(order.sim.iccid);        
+        // const data: any =  {
+        //     orderId: order.orderId,
+        //     package_id: order.package_id,
+        //     iccid: order.iccid,
+        //     usage_data: usageData
+        // };
+        const newObj = {};
+        newObj["orderId"] = order.orderId;
+        newObj["package_id"] = order.package_id;
+        newObj["iccid"] = order.sim.iccid;
+        newObj["usage_data"] = usageData;
+        cleanedData.push(newObj);
       }
-      console.warn('Skipping malformed order object:', order);
-      return null; 
-  }).filter(order => order !== null);
+    }
 
-  console.log("Simplified Topup Orders: ", simplifiedOrders);
+    console.log("Simplified Topup Orders: ", cleanedData);
 
-  res.status(200).json(simplifiedOrders);
+    res.status(200).json(cleanedData);
 
-}
+  }
 
   public queryOrder = async (req: Request, res: Response) => {
     const { orderId } = req.params;
@@ -102,7 +107,7 @@ export class OrderHandler {
 
     res.status(204)
   }
- 
+
   public createOrder = async (req: Request, res: Response) => {
     const orderId = uuidv4();
     const { ppPublicKey, quantity, package_id, package_price } = req.body;
@@ -130,10 +135,10 @@ export class OrderHandler {
     await this.db.ref(`/orders/${orderId}`).set(order);
 
     const startTime = Date.now();
-    const paymentCheckInterval = setInterval(async() => {
+    const paymentCheckInterval = setInterval(async () => {
       // Check if the total duration has passed
       if (Date.now() - startTime > this.paymentCheckDuration) {
-        console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);        
+        console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
         clearInterval(paymentCheckInterval);
         return;
       }
@@ -147,7 +152,7 @@ export class OrderHandler {
         if (order.status === 'pending') {
           order = await this.processPayment(order)
         }
-        
+
         // if payment has been received, pay to master
         if (order.status === 'paid') {
           order = await this.payToMaster(order, pp);
@@ -171,13 +176,13 @@ export class OrderHandler {
       }
     }, this.pollingInterval)
 
-    res.json({ 
+    res.json({
       orderId,
       paymentInSol
     });
   }
 
-// === HELPER FUNCTION ===
+  // === HELPER FUNCTION ===
   public async payToMaster(order: Order, pp: any): Promise<Order> {
     const sig = await this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, order.paymentInSol);
     if (sig) {
@@ -189,18 +194,18 @@ export class OrderHandler {
 
   public async provisionEsim(order: Order): Promise<Order> {
     // get order
-    const sim = await this.airaloWrapper.placeOrder({ 
-      quantity: order.quantity, 
+    const sim = await this.airaloWrapper.placeOrder({
+      quantity: order.quantity,
       package_id: order.package_id
     });
     order.sim = sim;
     order = await this.updateOrderStatus(order, "esim_provisioned")
     await this.dbHandler.updatePPOrder(order.ppPublicKey, order.orderId)
-    
+
     return order
   }
 
-  public async processPayment(order: Order): Promise<Order> {    
+  public async processPayment(order: Order): Promise<Order> {
     const enoughReceived = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
     console.log(`processing order ${order.orderId}`, enoughReceived, order.paymentInSol);
     if (enoughReceived) {
@@ -221,11 +226,11 @@ export class OrderHandler {
 
   public async getOrder(order_id: string): Promise<Order> {
     const orderSnapshot = await this.db.ref(`/orders/${order_id}`).once('value');
-    
+
     if (!orderSnapshot.exists()) {
       return null
     }
-    
+
     return orderSnapshot.val() as Order;
   }
 

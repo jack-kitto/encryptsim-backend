@@ -29,7 +29,7 @@ export interface AiraloTopupOrder {
   id: string;
   package_id: string;
   currency: string;
-  quantity: number; 
+  quantity: number;
   description: string;
   esim_type: string;
   data: string;
@@ -65,7 +65,7 @@ export interface ExportedAiraloPackage {
   operators: ExportedOperator[];
 }
 
-export class AiraloWrapper{
+export class AiraloWrapper {
   private db: admin.database.Database;
   private airaloService: AiraloService;
 
@@ -82,9 +82,9 @@ export class AiraloWrapper{
       throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
     }
 
-    this.airaloService = new AiraloService({ 
+    this.airaloService = new AiraloService({
       baseUrl: clientUrl,
-      clientId, 
+      clientId,
       clientSecret
     });
   }
@@ -119,12 +119,12 @@ export class AiraloWrapper{
     }
   }
   // : Promise<AiraloOrder>
- public async createTopupOrder(orderData: AiraloTopupOrderParams): Promise<AiraloTopupOrder> {
+  public async createTopupOrder(orderData: AiraloTopupOrderParams): Promise<AiraloTopupOrder> {
     try {
 
       const params: any = {
         package_id: orderData.package_id,
-        iccid: orderData.iccid, 
+        iccid: orderData.iccid,
         description: orderData.description,
       }
       console.log("param: ", params);
@@ -135,18 +135,18 @@ export class AiraloWrapper{
       const parsed_order = JSON.parse(data_json);
 
       console.log("topupOrder: ", parsed_order);
-    
- 
+
+
       return {
-          id: parsed_order.data.id,
-          package_id: parsed_order.data.package_id,
-          currency: parsed_order.data.currency,
-          quantity: parsed_order.data.quantity,
-          description: parsed_order.data.description,
-          esim_type: parsed_order.data.esim_type,
-          data: parsed_order.data.data,
-          price: parsed_order.data.price,
-          net_price: parsed_order.data.net_price,     // Adjust path as per actual SDK response
+        id: parsed_order.data.id,
+        package_id: parsed_order.data.package_id,
+        currency: parsed_order.data.currency,
+        quantity: parsed_order.data.quantity,
+        description: parsed_order.data.description,
+        esim_type: parsed_order.data.esim_type,
+        data: parsed_order.data.data,
+        price: parsed_order.data.price,
+        net_price: parsed_order.data.net_price,     // Adjust path as per actual SDK response
       };
     } catch (error: any) {
       console.error("Error placing Airalo top-up order:", error);
@@ -154,7 +154,7 @@ export class AiraloWrapper{
     }
   }
   // : Promise<AiraloSIMTopup[]>
-  public async getSIMTopups(iccid: string) : Promise<AiraloSIMTopup[]> {
+  public async getSIMTopups(iccid: string): Promise<AiraloSIMTopup[]> {
     try {
       const cacheKey = `topups/${iccid}`;
       const cachedData = await this.db.ref(cacheKey).once('value');
@@ -193,7 +193,24 @@ export class AiraloWrapper{
 
       return cleanedTopupData;
 
-      
+
+    } catch (error: any) {
+      console.error(`Error getting SIM top-ups for ICCID ${iccid}:`, error);
+      throw new Error(error.message);
+    }
+  }
+
+  //: Promise<AiraloSIMTopup[]>
+  public async getDataUsage(iccid: string): Promise<any[]> {
+    try {
+      // console.log("Fetching data from Airalo API for", cacheKey);
+      const topups = await this.airaloService.getSIMUsage(iccid);
+      const data_json = JSON.stringify(topups);
+      const parsed_item = JSON.parse(data_json);
+      //console.log("data_usage: ", parsed_item.data);
+      return parsed_item.data;
+
+
     } catch (error: any) {
       console.error(`Error getting SIM top-ups for ICCID ${iccid}:`, error);
       throw new Error(error.message);
@@ -205,7 +222,7 @@ export class AiraloWrapper{
       const cacheKey = `package-plans/${type}/${country || 'global'}`;
       const cachedData = await this.db.ref(cacheKey).once('value');
       console.log(cachedData)
-      
+
       const cacheEntry = cachedData.val();
       const now = Date.now();
       const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
