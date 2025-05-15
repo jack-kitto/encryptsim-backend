@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import { SolanaService } from '../src/services/solanaService';
 import { DBHandler, initializeFirebase } from '../src/helper';
 import { config } from "dotenv";
-import { TopupHandler, TopupsOrder } from "../src/topup-handler";
+import { TopupHandler, TopupOrder } from "../src/topup-handler";
 import { v4 as uuidv4 } from 'uuid';
 
 config();
@@ -18,7 +18,7 @@ describe('TopupHandler Tests', () => { // Changed describe to be more general fo
     console.log("OrderId: ", orderId);
     const solanaService = new SolanaService();
     const sol = await solanaService.convertUSDToSOL(5);
-    const order: TopupsOrder = {
+    const order: TopupOrder = {
       orderId: orderId,
       ppPublicKey: "Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76",
       iccid: "89852351124640198082",

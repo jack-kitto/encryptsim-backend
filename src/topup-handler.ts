@@ -4,9 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { SolanaService } from './services/solanaService';
 import { AiraloWrapper, AiraloTopupOrder } from './services/airaloService';
 import { DBHandler } from './helper';
-import { stringify } from 'querystring';
 
-export interface TopupsOrder {
+export interface TopupOrder {
     orderId: string;
     ppPublicKey: string;
     iccid: string;
@@ -119,7 +118,7 @@ export class TopupHandler {
         const parsedUSD = parseFloat(package_price);
         const paymentInSol = await this.solanaService.convertUSDToSOL(parsedUSD);
 
-        const order: TopupsOrder = {
+        const order: TopupOrder = {
             orderId,
             ppPublicKey,
             iccid,
@@ -178,7 +177,7 @@ export class TopupHandler {
     }
 
     // === HELPER FUNCTION ===
-    public async payToMaster(order: TopupsOrder, pp: any): Promise<TopupsOrder> {
+    public async payToMaster(order: TopupOrder, pp: any): Promise<TopupOrder> {
         const sig = await this.solanaService.aggregatePaymentToMasterWallet(pp.privateKey, order.paymentInSol);
         if (sig) {
             await this.updateOrderStatus(order, 'paid_to_master')
@@ -187,7 +186,7 @@ export class TopupHandler {
         return order
     }
 
-    public async provisionEsim(order: TopupsOrder): Promise<TopupsOrder> {
+    public async provisionEsim(order: TopupOrder): Promise<TopupOrder> {
         // get order
         const topup = await this.airaloWrapper.createTopupOrder({
             iccid: order.iccid,
@@ -200,7 +199,7 @@ export class TopupHandler {
         return order
     }
 
-    public async processPayment(order: TopupsOrder): Promise<TopupsOrder> {
+    public async processPayment(order: TopupOrder): Promise<TopupOrder> {
         const enoughReceived = await this.solanaService.checkSolanaPayment(order.ppPublicKey, order.paymentInSol);
         console.log(`processing order ${order.orderId}`, enoughReceived);
         if (enoughReceived) {
@@ -212,7 +211,7 @@ export class TopupHandler {
         return order;
     }
 
-    public async updateOrderStatus(order: TopupsOrder, status: 'pending' | 'paid' | 'esim_provisioned' | 'paid_to_master' | 'failed'): Promise<TopupsOrder> {
+    public async updateOrderStatus(order: TopupOrder, status: 'pending' | 'paid' | 'esim_provisioned' | 'paid_to_master' | 'failed'): Promise<TopupOrder> {
         order.status = status;
         order.updatedAt = new Date().toISOString();
         await this.db.ref(`/topup_orders/${order.orderId}`).set(order);
@@ -220,13 +219,13 @@ export class TopupHandler {
         return order
     }
 
-    public async getTopupOrder(order_id: string): Promise<TopupsOrder> {
+    public async getTopupOrder(order_id: string): Promise<TopupOrder> {
         const orderSnapshot = await this.db.ref(`/topup_orders/${order_id}`).once('value');
 
         if (!orderSnapshot.exists()) {
             return null
         }
-        return orderSnapshot.val() as TopupsOrder;
+        return orderSnapshot.val() as TopupOrder;
     }
 
     private async setOrderError(order_id: string, errorLog: string): Promise<void> {

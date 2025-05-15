@@ -1,0 +1,28 @@
+{
+  "data": {
+    "id": 651686,
+    "code": "20250515-651686",
+    "package_id": "asialink-7days-1gb-topup",
+    "currency": "USD",
+    "quantity": 1,
+    "type": "topup",
+    "description": "",
+    "esim_type": "Prepaid",
+    "validity": 7,
+    "package": "Asialink-1 GB - 7 Days",
+    "data": "1 GB",
+    "price": 5,
+    "text": null,
+    "voice": null,
+    "net_price": 1.7,
+    "created_at": "2025-05-15 03:38:54",
+    "manual_installation": "<p><b>eSIM name:</b> Asialink</p><p><b>Coverage: </b>Bangladesh, Cambodia, China, Hong Kong(China), India, Indonesia, Japan, Laos, Macau, Malaysia, Pakistan, Philippines, Singapore, South Korea, Sri Lanka, Taiwan, Thailand, and Vietnam.</p><p><b>To activate the eSIM by scanning the QR code on your eSIM-capable device you need to print or display this QR code on another device:</b></p><ol><li>Settings > Cellular/Mobile > Add Cellular/Mobile Plan.</li><li>Scan QR code.</li><li>Confirm eSIM plan details.</li><li>Label the eSIM.</li></ol><p><b>To access Data:</b></p><ol><li>Enable data roaming.</li></ol>",
+    "qrcode_installation": "<p><b>eSIM name:</b> Asialink<br></p><p><b>Coverage: </b><span id=\"docs-internal-guid-d6fab335-7fff-7be0-f0ab-c881defac5a4\">Bangladesh, Cambodia, China, Hong Kong(China), India, Indonesia, Japan, Laos, Macau, Malaysia, Pakistan, Philippines, Singapore, South Korea, Sri Lanka, Taiwan, Thailand, and Vietnam.</span></p><p><b>To activate the eSIM by scanning the QR code on your eSIM-capable device you need to print or display this QR code on another device:</b></p><ol><li>Settings > Cellular/Mobile > Add Cellular/Mobile Plan.</li><li>Scan QR code.</li><li>Confirm eSIM plan details.</li><li>Label the eSIM.</li></ol><p><b>To access Data:</b></p><ol><li>Enable data roaming.</li></ol>",
+    "installation_guides": {
+      "en": "https://www.airalo.com/help/getting-started-with-airalo"
+    }
+  },
+  "meta": {
+    "message": "success"
+  }
+}

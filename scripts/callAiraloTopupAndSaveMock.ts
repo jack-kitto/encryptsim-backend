@@ -7,7 +7,7 @@ config();
 
 async function callAiraloServiceAndSaveMock() {
   // --- Start: Configuration ---
-  const outputFilePath = 'test/mockTopupResponse.json';
+  const outputFilePath = 'test/mock-data/asialink-7days-1gb-topup.json';
   // --- End: Configuration ---
 
   try {
@@ -28,7 +28,7 @@ async function callAiraloServiceAndSaveMock() {
 
     // TODO: Replace the line below with your actual API call:
     const params: any = {
-      package_id: "",
+      package_id: "asialink-7days-1gb-topup",
       iccid: "89852351124630223866",
       description: ""
     }
