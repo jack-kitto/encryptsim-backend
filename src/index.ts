@@ -47,6 +47,7 @@ async function main() {
       res.status(201).json({ publicKey });
     } catch (error: any) {
       console.error("Error creating payment profile:", error);
+      // Log error to Firebase
       res.status(500).json({ error: "Failed to create payment profile" });
     }
   });  
@@ -76,6 +77,7 @@ async function main() {
       if (!topups) {
         // This typically means the service encountered an error it couldn't recover from,
         // or the method in the service is designed to return undefined in some error cases.
+        // Log error to Firebase
         return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
       }
 
@@ -84,6 +86,7 @@ async function main() {
     } catch (error: any) {
       console.error(`Error getting top-ups for ICCID ${req.params.iccid}:`, error);
       const errorMessage = error.message || "Failed to retrieve SIM top-ups";
+       // Log error to Firebase
       res.status(500).json({ error: errorMessage });
     }
   });
@@ -95,19 +98,20 @@ async function main() {
       if (!iccid) {
         return res.status(400).json({ error: 'Missing required parameter: iccid' });
       }
-      const topups: any = await airaloWrapper.getDataUsage(iccid);
+      const usage: any = await airaloWrapper.getDataUsage(iccid);
 
-      // if (!topups) {
+      // if (!usage) {
       //   // This typically means the service encountered an error it couldn't recover from,
       //   // or the method in the service is designed to return undefined in some error cases.
       //   return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
       // }
 
-      res.json(topups);
+      res.json(usage);
 
     } catch (error: any) {
-      console.error(`Error getting top-ups for ICCID ${req.params.iccid}:`, error);
-      const errorMessage = error.message || "Failed to retrieve SIM top-ups";
+      console.error(`Error getting usage for ICCID ${req.params.iccid}:`, error);
+      const errorMessage = error.message || "Failed to retrieve SIM usage";
+      // Log error to Firebase
       res.status(500).json({ error: errorMessage });
     }
   });
@@ -128,6 +132,7 @@ async function main() {
 
       if (packages === undefined) {
         // This case is handled in the service by returning undefined on error
+         // Log error to Firebase
         return res.status(500).json({ error: 'Failed to retrieve package plans' });
       }
 
@@ -135,7 +140,29 @@ async function main() {
 
     } catch (error: any) {
       console.error("Error in /packages endpoint:", error);
+       // Log error to Firebase
       res.status(500).json({ error: "Failed to retrieve package plans" });
+    }
+  });
+
+  // Endpoint to log errors from the frontend or other sources
+  app.post('/error', async (req: Request, res: Response) => {
+    try {
+      const { message } = req.body;
+      const errorLog = {
+        timestamp: new Date().toISOString(),
+        message: message
+      };
+      console.error("Frontend Error Log:", errorLog);
+      
+      // Save error log to Firebase
+      await db.ref('/error_logs').push(errorLog);
+      
+      res.status(200);
+    } catch (error: any) {
+      console.error("Error processing error log request:", error);
+       // Log error about the logging process itself
+      res.status(500).json({ success: false, message: "Failed to process log request" });
     }
   });
 
