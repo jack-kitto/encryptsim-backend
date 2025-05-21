@@ -61,7 +61,7 @@ export class TopupHandler {
 
         const orderDetailsPromises = orderIds.map((orderId: string) =>
             this.getTopupOrder(orderId).catch(err => {
-                console.error(`Error fetching order ${orderId}:`, err);
+                this.logger.logERROR(`Error fetching order ${orderId}: ${err}`);
                 return null;
             })
         );
@@ -174,7 +174,7 @@ export class TopupHandler {
                 }
             }
             catch (error) {
-                console.error(`Error processing order payment for order ${orderId}:`, error);
+                this.logger.logERROR(`Error processing order payment for order ${orderId}: ${error}`);
                 await this.setOrderError(orderId, error as string); // Cast error to string
                 clearInterval(paymentCheckInterval);
             }

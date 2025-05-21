@@ -62,7 +62,7 @@ export class OrderHandler {
 
     const orderDetailsPromises = orderIds.map((orderId: string) =>
       this.getOrder(orderId).catch(err => {
-        console.error(`Error fetching order ${orderId}:`, err);
+        this.logger.logERROR(`Error fetching order ${orderId}: ${err}`);
         return null;
       })
     );
@@ -111,7 +111,12 @@ export class OrderHandler {
       });
     }
 
-    res.status(204)
+    this.logger.logDEBUG(`order ${order.orderId}: esim not provisioned`)
+
+    res.status(200).json({
+      orderId: order.orderId,
+      status: order.status
+    })
   }
 
   public createOrder = async (req: Request, res: Response) => {
@@ -142,16 +147,17 @@ export class OrderHandler {
 
     const startTime = Date.now();
     const paymentCheckInterval = setInterval(async () => {
+      let order = await this.getOrder(orderId)
       // Check if the total duration has passed
       if (Date.now() - startTime > this.paymentCheckDuration) {
         console.log(`Payment check duration exceeded for order ${orderId}. Stopping polling.`);
+        order = await this.updateOrderStatus(order, "failed")
         clearInterval(paymentCheckInterval);
         return;
       }
 
       try {
         // re-fetch order and pp for this cycle
-        let order = await this.getOrder(orderId)
         const pp = await this.dbHandler.getPaymentProfile(order.ppPublicKey)
 
         // check payment has been received
@@ -175,7 +181,7 @@ export class OrderHandler {
         }
       }
       catch (error) {
-        console.error(`Error processing order payment for order ${orderId}:`, error);
+        this.logger.logERROR(`Error processing order payment for order ${orderId}: ${error}`);
         // Depending on error handling requirements, you might want to stop the interval here
         await this.setOrderError(orderId, error);
         clearInterval(paymentCheckInterval);

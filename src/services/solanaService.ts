@@ -51,7 +51,7 @@ export class SolanaService {
       const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
       return response.data.solana.usd;
     } catch (error) {
-      console.error('Error fetching SOL price from Coingecko:', error);
+      this.logger.logERROR(`Error fetching SOL price from Coingecko: ${error}`);
       return null;
     }
   }
@@ -93,7 +93,7 @@ export class SolanaService {
         break; // Exit send retry loop on success
       } catch (error) {
         sendError = error;
-        console.error(`Error sending transaction on attempt ${i + 1}:`, error);
+        this.logger.logERROR(`Error sending transaction on attempt ${i + 1}: ${error}`);
         if (i < maxSendRetries - 1) {
           console.log(`Retrying send in ${sendRetryInterval / 1000} seconds...`);
           await new Promise(resolve => setTimeout(resolve, sendRetryInterval));
@@ -127,7 +127,7 @@ export class SolanaService {
           console.warn(`Transaction ${signature} failed to confirm on attempt ${i + 1}:`, status.value.err);
         }
       } catch (error) {
-        console.error(`Error confirming transaction ${signature} on attempt ${i + 1}:`, error);
+        this.logger.logERROR(`Error confirming transaction ${signature} on attempt ${i + 1}: ${error}`);
       }
 
       // Wait before retrying confirmation

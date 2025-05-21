@@ -47,7 +47,7 @@ async function main() {
 
       res.status(201).json({ publicKey });
     } catch (error: any) {
-      console.error("Error creating payment profile:", error);
+      this.logger.logERROR("Error creating payment profile:", error);
       // Log error to Firebase
       res.status(500).json({ error: "Failed to create payment profile" });
     }
@@ -85,7 +85,7 @@ async function main() {
       res.json(topups);
 
     } catch (error: any) {
-      console.error(`Error getting top-ups for ICCID ${req.params.iccid}:`, error);
+      this.logger.logERROR(`Error getting top-ups for ICCID ${req.params.iccid}:`, error);
       const errorMessage = error.message || "Failed to retrieve SIM top-ups";
        // Log error to Firebase
       res.status(500).json({ error: errorMessage });
@@ -110,7 +110,7 @@ async function main() {
       res.json(usage);
 
     } catch (error: any) {
-      console.error(`Error getting usage for ICCID ${req.params.iccid}:`, error);
+      this.logger.logERROR(`Error getting usage for ICCID ${req.params.iccid}:`, error);
       const errorMessage = error.message || "Failed to retrieve SIM usage";
       // Log error to Firebase
       res.status(500).json({ error: errorMessage });
@@ -140,7 +140,7 @@ async function main() {
       res.json(packages);
 
     } catch (error: any) {
-      console.error("Error in /packages endpoint:", error);
+      this.logger.logERROR("Error in /packages endpoint:", error);
        // Log error to Firebase
       res.status(500).json({ error: "Failed to retrieve package plans" });
     }
@@ -163,7 +163,7 @@ async function main() {
       
       res.status(200).send("OK")
     } catch (error: any) {
-      console.error("Error processing error log request:", error);
+      this.logger.logERROR("Error processing error log request:", error);
        // Log error about the logging process itself
       res.status(500).json({ success: false, message: "Failed to process log request" });
     }

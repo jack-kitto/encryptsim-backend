@@ -116,7 +116,7 @@ export class AiraloWrapper {
         direct_apple_installation_url: sim.direct_apple_installation_url
       };
     } catch (error: any) {
-      console.error("Error placing Airalo order:", error);
+      this.logger.logERROR(`Error placing Airalo order: ${error}`);
       throw new Error(error.message);
     }
   }
@@ -151,7 +151,7 @@ export class AiraloWrapper {
         net_price: parsed_order.data.net_price,     // Adjust path as per actual SDK response
       };
     } catch (error: any) {
-      console.error("Error placing Airalo top-up order:", error);
+      this.logger.logERROR(`Error placing Airalo top-up order: ${error}`);
       throw new Error(error.message);
     }
   }
@@ -197,7 +197,7 @@ export class AiraloWrapper {
 
 
     } catch (error: any) {
-      console.error(`Error getting SIM top-ups for ICCID ${iccid}:`, error);
+      this.logger.logERROR(`Error getting SIM top-ups for ICCID ${iccid}: ${error}`);
       throw new Error(error.message);
     }
   }
@@ -214,7 +214,7 @@ export class AiraloWrapper {
 
 
     } catch (error: any) {
-      console.error(`Error getting SIM top-ups for ICCID ${iccid}:`, error);
+      this.logger.logERROR(`Error getting SIM top-ups for ICCID ${iccid}: ${error}`);
       throw new Error(error.message);
     }
   }
@@ -249,7 +249,7 @@ export class AiraloWrapper {
 
       return cleanedPackageData
     } catch (error) {
-      console.error("Error getting package plans:", error);
+      this.logger.logERROR(`Error getting package plans: ${error}`);
       throw new Error(error.message);
     }
   }
