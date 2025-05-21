@@ -88,8 +88,8 @@ describe('order', () => {
   // npm test -- -t "solana-payment-unit"
   it('solana-payment-unit', async () => {
     const db = await initializeFirebase()
-    const solanaService = new SolanaService()
-    const orderHandler = new OrderHandler(db, solanaService, null)
+    const solanaService = new SolanaService(null)
+    const orderHandler = new OrderHandler(db, solanaService, null, null)
     const dbHandler = new DBHandler(db)
     const order_id = "d5885499-4b44-4195-8908-1f1335104008";
 

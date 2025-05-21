@@ -3,7 +3,7 @@ import { config } from "dotenv";
 import { AiraloWrapper, AiraloTopupOrder, AiraloSIMTopup } from './services/airaloService';
 import { SolanaService } from './services/solanaService';
 import admin from "firebase-admin";
-import { initializeFirebase } from './helper';
+import { GCloudLogger, initializeFirebase } from './helper';
 import { OrderHandler } from './order-handler'; 
 import { TopupHandler } from './topup-handler';
 
@@ -26,13 +26,14 @@ let airaloWrapper: AiraloWrapper;
 async function main() {
   db = await initializeFirebase(); 
 
-  solanaService = new SolanaService();
+  const logger = new GCloudLogger();
+  solanaService = new SolanaService(logger);
 
-  airaloWrapper = new AiraloWrapper(db); 
+  airaloWrapper = new AiraloWrapper(db, logger);
   await airaloWrapper.initialize();
 
-  const orderHandler = new OrderHandler(db, solanaService, airaloWrapper);
-  const topupHandler = new TopupHandler(db, solanaService, airaloWrapper);
+  const orderHandler = new OrderHandler(db, solanaService, airaloWrapper, logger);
+  const topupHandler = new TopupHandler(db, solanaService, airaloWrapper, logger);
 
   // === PAYMENT PROFILE HANDLER ===
 
@@ -150,15 +151,17 @@ async function main() {
     try {
       const { message } = req.body;
       const errorLog = {
-        timestamp: new Date().toISOString(),
         message: message
       };
-      console.error("Frontend Error Log:", errorLog);
       
       // Save error log to Firebase
-      await db.ref('/error_logs').push(errorLog);
+      const timestamp = new Date().toISOString();
+      const timestampKey = timestamp.replace(/[^a-zA-Z0-9]/g, '_'); // Create a valid key
+      await db.ref(`/error_logs/${timestampKey}`).set(errorLog);
+
+      logger.logINFO(`error logged: ${message}`)
       
-      res.status(200);
+      res.status(200).send("OK")
     } catch (error: any) {
       console.error("Error processing error log request:", error);
        // Log error about the logging process itself

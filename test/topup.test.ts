@@ -16,7 +16,7 @@ describe('TopupHandler Tests', () => { // Changed describe to be more general fo
     const orderId = uuidv4();
     const db = await initializeFirebase();
     console.log("OrderId: ", orderId);
-    const solanaService = new SolanaService();
+    const solanaService = new SolanaService(null);
     const sol = await solanaService.convertUSDToSOL(5);
     const order: TopupOrder = {
       orderId: orderId,
@@ -37,11 +37,11 @@ describe('TopupHandler Tests', () => { // Changed describe to be more general fo
   //npm test -- -t topup-handler
   it('topup-handler', async () => {
     const db = await initializeFirebase();
-    const solanaService = new SolanaService();
+    const solanaService = new SolanaService(null);
 
     const order_id = "b7338341-e3e1-4bd2-9006-61ab015e1031"; 
 
-    const topup = new TopupHandler(db, solanaService, null);
+    const topup = new TopupHandler(db, solanaService, null, null);
 
     let order = await topup.getTopupOrder(order_id);
     order = await topup.processPayment(order);

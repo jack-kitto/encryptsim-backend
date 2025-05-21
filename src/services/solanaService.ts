@@ -1,11 +1,13 @@
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, BlockheightBasedTransactionConfirmationStrategy } from '@solana/web3.js';
 import axios from 'axios';
+import { GCloudLogger } from '../helper';
 
 export class SolanaService {
   private connection: Connection;
   private masterPublicKey: PublicKey;
+  private logger: GCloudLogger;
 
-  constructor() {
+  constructor(logger: GCloudLogger) {
     const rpcUrl = process.env.SOLANA_RPC_URL;
 
     if (!rpcUrl) {
@@ -14,6 +16,7 @@ export class SolanaService {
 
     this.connection = new Connection(rpcUrl);
     this.masterPublicKey = new PublicKey(process.env.SOLANA_MASTER_PK || "");
+    this.logger = logger;
   }
 
   public async createNewSolanaWallet(): Promise<{ publicKey: string, privateKey: string }> {

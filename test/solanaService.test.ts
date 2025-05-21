@@ -8,7 +8,7 @@ const testPublicKey = 'Fip7DsE6uA9tgQcatYkWQEYfyCmcoYPSrCoTPr2SbE76';
 
 describe('SolanaService.checkSolanaPayment', () => {
   let solanaService: SolanaService;
-  solanaService = new SolanaService();
+  solanaService = new SolanaService(null);
 
   // npm test -- -t "usd-to-sol-unit"
   it('usd-to-sol-unit', async () => {
@@ -43,7 +43,7 @@ describe('SolanaService.checkSolanaPayment', () => {
 
 describe('SolanaService.aggregatePaymentToMasterWallet integration test', () => {
     let solanaService: SolanaService;
-    solanaService = new SolanaService();
+    solanaService = new SolanaService(null);
 
     it('should aggregate payment to the master wallet and finalize the transaction', async () => {
         // --- START CUSTOM PARAMS ---

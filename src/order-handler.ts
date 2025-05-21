@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { v4 as uuidv4 } from 'uuid';
 import { SolanaService } from './services/solanaService';
 import { AiraloWrapper, SimOrder } from './services/airaloService';
-import { DBHandler } from './helper';
+import { DBHandler, GCloudLogger } from './helper';
 
 interface Order {
   orderId: string;
@@ -26,12 +26,19 @@ export class OrderHandler {
   private airaloWrapper: AiraloWrapper;
   private paymentCheckDuration = 600000; // 10 minutes
   private pollingInterval = 30000; // Poll every 10 seconds
+  private logger: GCloudLogger
 
-  constructor(db: admin.database.Database, solanaService: SolanaService, airaloWrapper: AiraloWrapper) {
+  constructor(
+    db: admin.database.Database, 
+    solanaService: SolanaService, 
+    airaloWrapper: AiraloWrapper, 
+    logger: GCloudLogger
+  ) {
     this.db = db;
     this.solanaService = solanaService;
     this.airaloWrapper = airaloWrapper;
     this.dbHandler = new DBHandler(this.db);
+    this.logger = logger;
   }
 
   public queryPPOrder = async (req: Request, res: Response) => {
@@ -86,7 +93,6 @@ export class OrderHandler {
     console.log("Simplified Topup Orders: ", cleanedData);
 
     res.status(200).json(cleanedData);
-
   }
 
   public queryOrder = async (req: Request, res: Response) => {

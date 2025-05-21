@@ -27,7 +27,7 @@ describe('updatePaymentProfileWithOrder', () => {
     beforeEach(async () => {
       // Initialize Firebase and get db instance
       db = await initializeFirebase();
-      orderHandler = new OrderHandler(db, null, null);
+      orderHandler = new OrderHandler(db, null, null, null);
       dbHandler = new DBHandler(db);
 
       // Define references after db is initialized

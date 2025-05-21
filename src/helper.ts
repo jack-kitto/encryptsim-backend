@@ -1,4 +1,5 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { Logging } from '@google-cloud/logging';
 import admin from "firebase-admin";
 
 const client = new SecretManagerServiceClient();
@@ -74,5 +75,55 @@ export class DBHandler {
     orderIds.push(order_id);
 
     await ppRef.update({ orderIds });
+  }
+}
+
+export class GCloudLogger {
+  private logging: Logging
+
+  constructor() {
+    const GCLOUD_PROJ_ID = process.env.GCLOUD_PROJ_ID;
+    this.logging = new Logging({
+      projectId: GCLOUD_PROJ_ID
+    });
+  }
+
+  public logINFO(message: string) {
+    const log = this.logging.log('esim-log');
+    const metadata = {
+      resource: {
+        type: 'global'
+      },
+      severity: 'INFO'
+    };
+    const entry = log.entry(metadata, message);
+
+    log.write(entry);
+  }
+
+  public logDEBUG(message: string) {
+    const log = this.logging.log('esim-log');
+    const metadata = {
+      resource: {
+        type: 'global'
+      },
+      severity: 'DEBUG'
+    };
+    const entry = log.entry(metadata, message);
+
+    log.write(entry);
+  }
+
+  public logERROR(message: string) {
+    const log = this.logging.log('esim-log');
+    const metadata = {
+      resource: {
+        type: 'global'
+      },
+      severity: 'ERROR'
+    };
+    const entry = log.entry(metadata, message);
+
+    log.write(entry);
   }
 }

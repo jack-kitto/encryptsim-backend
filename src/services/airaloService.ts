@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
 import * as admin from "firebase-admin";
-import { accessSecretValue } from "../helper";
+import { accessSecretValue, GCloudLogger } from "../helper";
 config();
 
 export interface SimOrder {
@@ -68,9 +68,11 @@ export interface ExportedAiraloPackage {
 export class AiraloWrapper {
   private db: admin.database.Database;
   private airaloService: AiraloService;
+  private logger: GCloudLogger
 
-  constructor(db: admin.database.Database) {
+  constructor(db: admin.database.Database, logger) {
     this.db = db; // Receive the initialized db instance
+    this.logger = logger;
   }
 
   public async initialize() {
