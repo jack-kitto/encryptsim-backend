@@ -91,7 +91,7 @@ export class OrderHandler {
 
     console.log("Simplified Topup Orders: ", cleanedData);
 
-    res.status(200).json(cleanedData);
+    return res.status(200).json(cleanedData);
   }
 
   public queryOrder = async (req: Request, res: Response) => {
@@ -99,11 +99,11 @@ export class OrderHandler {
     const order = await this.getOrder(orderId)
 
     if (!order) {
-      res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     if (order.status === 'esim_provisioned') {
-      res.status(200).json({
+      return res.status(200).json({
         orderId: order.orderId,
         status: order.status,
         sim: order.sim
@@ -112,7 +112,7 @@ export class OrderHandler {
 
     this.logger.logDEBUG(`order ${order.orderId}: esim not provisioned`)
 
-    res.status(200).json({
+    return res.status(200).json({
       orderId: order.orderId,
       status: order.status
     })
@@ -187,7 +187,7 @@ export class OrderHandler {
       }
     }, this.pollingInterval)
 
-    res.json({
+    return res.json({
       orderId,
       paymentInSol
     });

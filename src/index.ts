@@ -45,11 +45,11 @@ async function main() {
 
       await db.ref(`/payment_profiles/${publicKey}`).set(paymentProfile);
 
-      res.status(201).json({ publicKey });
+      return res.status(200).json({ publicKey });
     } catch (error: any) {
       logger.logERROR(`Error creating payment profile: ${error}`);
       // Log error to Firebase
-      res.status(500).json({ error: "Failed to create payment profile" });
+      return res.status(500).json({ error: "Failed to create payment profile" });
     }
   });  
 
@@ -82,13 +82,13 @@ async function main() {
         return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
       }
 
-      res.json(topups);
+      return res.json(topups);
 
     } catch (error: any) {
       logger.logERROR(`Error getting top-ups for ICCID ${req.params.iccid}: ${error}`);
       const errorMessage = error.message || "Failed to retrieve SIM top-ups";
        // Log error to Firebase
-      res.status(500).json({ error: errorMessage });
+      return res.status(500).json({ error: errorMessage });
     }
   });
 
@@ -107,13 +107,13 @@ async function main() {
       //   return res.status(500).json({ error: 'Failed to retrieve SIM top-ups' });
       // }
 
-      res.json(usage);
+      return res.json(usage);
 
     } catch (error: any) {
       logger.logERROR(`Error getting usage for ICCID ${req.params.iccid}: ${error}`);
       const errorMessage = error.message || "Failed to retrieve SIM usage";
       // Log error to Firebase
-      res.status(500).json({ error: errorMessage });
+      return res.status(500).json({ error: errorMessage });
     }
   });
 
@@ -137,11 +137,11 @@ async function main() {
         return res.status(500).json({ error: 'Failed to retrieve package plans' });
       }
 
-      res.json(packages);
+      return res.json(packages);
     } catch (error: any) {
       logger.logERROR(`Error in /packages endpoint: ${error}`);
        // Log error to Firebase
-      res.status(500).json({ error: "Failed to retrieve package plans" });
+      return res.status(500).json({ error: "Failed to retrieve package plans" });
     }
   });
 
@@ -160,11 +160,11 @@ async function main() {
 
       logger.logINFO(`error logged: ${message}`)
       
-      res.status(200).send("OK")
+      return res.status(200).send("OK")
     } catch (error: any) {
       logger.logERROR(`Error processing error log request: ${error}`);
        // Log error about the logging process itself
-      res.status(500).json({ success: false, message: "Failed to process log request" });
+      return res.status(500).json({ success: false, message: "Failed to process log request" });
     }
   });
 

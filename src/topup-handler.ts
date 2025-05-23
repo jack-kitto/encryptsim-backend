@@ -86,7 +86,7 @@ export class TopupHandler {
 
         console.log("Simplified Topup Orders: ", cleanedData);
 
-        res.status(200).json(cleanedData);//To_do
+        return res.status(200).json(cleanedData);//To_do
     }
 
     public queryTopUpOrder = async (req: Request, res: Response) => {
@@ -105,7 +105,7 @@ export class TopupHandler {
             });
         }
 
-        res.status(204).json({
+        return res.status(204).json({
             orderId: order.orderId,
             status: order.status
         })
@@ -180,7 +180,7 @@ export class TopupHandler {
             }
         }, this.pollingInterval)
 
-        res.json({ orderId, paymentInSol });
+        return res.json({ orderId, paymentInSol });
     }
 
     // === HELPER FUNCTION ===
