@@ -49,7 +49,6 @@ export class OrderHandler {
     }
     const paymentProfileData = paymentProfileSnapshot.val();
 
-
     const orderIdsObject = paymentProfileData.orderIds || {};
     const orderIds = [...new Set(Object.values(orderIdsObject))];
 

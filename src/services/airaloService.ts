@@ -230,11 +230,10 @@ export class AiraloWrapper {
       const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
 
       if (cacheEntry && cacheEntry.timestamp && (now - cacheEntry.timestamp < twentyFourHoursInMillis)) {
-        console.log("Returning cached data for", cacheKey);
+        this.logger.logINFO(`Returning cached data for ${cacheKey}`);
         return cacheEntry.data;
       }
 
-      console.log("Fetching data from Airalo API for", cacheKey);
       const packages = await this.airaloService.getPackages({
         type,
         country
@@ -245,7 +244,6 @@ export class AiraloWrapper {
 
       // Cache the fetched data with a timestamp
       await this.db.ref(cacheKey).set({ data: cleanedPackageData, timestamp: now });
-      console.log("Cached data to Firebase for", cacheKey);
 
       return cleanedPackageData
     } catch (error) {
