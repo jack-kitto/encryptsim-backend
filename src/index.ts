@@ -170,7 +170,7 @@ async function main() {
 
   // Health check endpoint
   app.get('/health', (req, res) => {
-    res.send("OK");
+    return res.send("OK");
   });
 
   const port = parseInt(process.env.PORT || '3000');
