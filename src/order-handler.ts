@@ -113,7 +113,7 @@ export class OrderHandler {
   // add past order to payment profile
   public addOrder = async (req: Request, res: Response) => {
     try {
-      const { iccid, ppPublicKey } = req.body;
+      const { ppPublicKey, iccid } = req.body;
 
       if (!iccid || !ppPublicKey) {
         return res.status(400).json({ error: 'Missing required parameters' });
@@ -143,7 +143,7 @@ export class OrderHandler {
           qrcode: '', // Default or empty value to match SimOrder interface
           qrcode_url: '', // Default or empty value to match SimOrder interface
           created_at: '', // Default or empty value to match SimOrder interface
-          direct_apple_installation_url: undefined, // Default or empty value (optional in SimOrder)
+          direct_apple_installation_url: '', // Default or empty value (optional in SimOrder)
         }
       };
 
