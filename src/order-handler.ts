@@ -52,8 +52,6 @@ export class OrderHandler {
     const orderIdsObject = paymentProfileData.orderIds || {};
     const orderIds = [...new Set(Object.values(orderIdsObject))];
 
-    //const orderIds = Object.values(orderIdsObject);
-
     if (!orderIdsObject || Object.keys(orderIdsObject).length === 0) {
       console.log(`No orders found associated with payment profile: ${ppPublicKey}`);
       return res.status(200).json([]);
@@ -74,12 +72,6 @@ export class OrderHandler {
     for (const order of orders) {
       if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
         const usageData = await this.airaloWrapper.getDataUsage(order.sim.iccid);        
-        // const data: any =  {
-        //     orderId: order.orderId,
-        //     package_id: order.package_id,
-        //     iccid: order.iccid,
-        //     usage_data: usageData
-        // };
         const newObj = {};
         newObj["orderId"] = order.orderId;
         newObj["package_id"] = order.package_id;
@@ -89,7 +81,7 @@ export class OrderHandler {
       }
     }
 
-    console.log("Simplified Topup Orders: ", cleanedData);
+    console.log("Simplified Orders: ", cleanedData);
 
     return res.status(200).json(cleanedData);
   }
@@ -117,6 +109,59 @@ export class OrderHandler {
       status: order.status
     })
   }
+
+  // add past order to payment profile
+  public addOrder = async (req: Request, res: Response) => {
+    try {
+      const { iccid, ppPublicKey } = req.body;
+
+      if (!iccid || !ppPublicKey) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      // Check if the payment profile exists
+      const paymentProfileSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
+      if (!paymentProfileSnapshot.exists()) {
+        return res.status(400).json({ error: 'Payment profile not found' });
+      }
+
+      const orderId = uuidv4();
+
+      // Create a minimal order object matching the Order interface structure
+      const order: Order = {
+        orderId,
+        ppPublicKey,
+        quantity: 0, // Default or empty value
+        package_id: '', // Default or empty value
+        package_price: '', // Default or empty value
+        paymentInSol: 0, // Default or empty value
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: 'esim_provisioned', // Assuming the eSIM is already provisioned
+        sim: { // Include sim object matching the SimOrder interface structure
+          iccid: iccid,
+          qrcode: '', // Default or empty value to match SimOrder interface
+          qrcode_url: '', // Default or empty value to match SimOrder interface
+          created_at: '', // Default or empty value to match SimOrder interface
+          direct_apple_installation_url: undefined, // Default or empty value (optional in SimOrder)
+        }
+      };
+
+      // Save the order to the /orders path
+      await this.db.ref(`/orders/${orderId}`).set(order);
+
+      // Update the payment profile with the new orderId
+      await this.dbHandler.updatePPOrder(order.ppPublicKey, order.orderId);
+
+      this.logger.logINFO(`Order ${orderId} added for payment profile ${ppPublicKey} with ICCID ${iccid}`);
+
+      return res.status(200).json({ message: 'Order added successfully', orderId: orderId });
+
+    } catch (error: any) {
+      this.logger.logERROR(`Error adding order: ${error}`);
+      return res.status(500).json({ error: 'Failed to add order' });
+    }
+  };
 
   public createOrder = async (req: Request, res: Response) => {
     const orderId = uuidv4();

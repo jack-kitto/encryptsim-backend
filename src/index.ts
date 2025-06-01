@@ -55,6 +55,7 @@ async function main() {
 
   // === ORDER HANDLER ===
   app.post('/order', orderHandler.createOrder);
+  app.post('/add-order', orderHandler.addOrder);
   // to be routinely called by front-end to check if order has been fulfilled
   app.get('/order/:orderId', orderHandler.queryOrder);
 
@@ -144,6 +145,8 @@ async function main() {
       return res.status(500).json({ error: "Failed to retrieve package plans" });
     }
   });
+
+  
 
   // Endpoint to log errors from the frontend or other sources
   app.post('/error', async (req: Request, res: Response) => {

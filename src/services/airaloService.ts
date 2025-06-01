@@ -202,6 +202,19 @@ export class AiraloWrapper {
     }
   }
 
+  public async getSIMDetails(iccid: string): Promise<any> {
+    const sim = await this.airaloService.getSIM(iccid)
+    const data_json = JSON.stringify(sim)
+    console.log(data_json)
+    const parsed_sim = JSON.parse(data_json)
+    const new_sim_obj = {};
+
+    new_sim_obj['iccid'] = parsed_sim.data.iccid;
+    new_sim_obj['created_at'] = parsed_sim.data.created_at;
+
+    return new_sim_obj
+  }
+
   //: Promise<AiraloSIMTopup[]>
   public async getDataUsage(iccid: string): Promise<any[]> {
     try {
