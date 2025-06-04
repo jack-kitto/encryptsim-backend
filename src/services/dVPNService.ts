@@ -26,15 +26,10 @@ export class DVPNService {
   }
 
   async createDevice(platform?: string) {
-    const body: Record<string, any> = {
+    const res = await axios.post(`${DVPN_BASE_URL}/device`, {
+      platform: !!platform ? platform : '',
       app_token: this.dvpnApiKey,
-    };
-
-    if (platform) {
-      body.platform = platform;
-    }
-
-    const res = await axios.post(`${DVPN_BASE_URL}/device`, body);
+    });
     return res.data.device_token;
   }
 
