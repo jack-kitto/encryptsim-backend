@@ -30,7 +30,7 @@ export class DVPNService {
       platform: !!platform ? platform : '',
       app_token: this.dvpnApiKey,
     });
-    return res.data.device_token;
+    return res.data;
   }
 
   async getCountries(deviceToken: string) {
@@ -68,15 +68,32 @@ export class DVPNService {
   }
 
   buildWireGuardConf(data: any) {
+    const privateKey = data.private_key || '';
+    const address = data.address || '10.0.0.2/32';
+    const dns = data.dns || '1.1.1.1';
+  
+    const serverPublicKey = data.server_public_key || '';
+  
+    let endpoint = '';
+    if (data.remote_url) {
+      endpoint = data.remote_url.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+    } else if (data.server?.remote_url) {
+      endpoint = data.server.remote_url.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+    } else {
+      endpoint = 'endpoint.example.com:51820';
+    }
+
     return `[Interface]
-      PrivateKey = ${data.private_key}
-      Address = ${data.address}
-      DNS = ${data.dns}
-      
-      [Peer]
-      PublicKey = ${data.server_public_key}
-      Endpoint = ${data.endpoint}
-      AllowedIPs = 0.0.0.0/0
-      `;
+    PrivateKey = ${privateKey}
+    Address = ${address}
+    ListenPort = 51820
+    DNS = ${dns}
+    
+    [Peer]
+    PublicKey = ${serverPublicKey}
+    Endpoint = ${endpoint}
+    AllowedIPs = 0.0.0.0/0
+    PersistentKeepalive = 20
+    `;
   }
 }

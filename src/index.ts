@@ -43,39 +43,42 @@ async function main() {
   app.get('/vpn/active', async (req, res) => {
     try {
       // create device
-      const deviceToken = await dVPNService.createDevice();
+      const deviceInfo = await dVPNService.createDevice();
+      console.log("deviceInfo: ",deviceInfo);
 
       // find countries
+      const deviceToken = deviceInfo.data.token;
+      console.log("deviceToken: ",deviceToken);
       const countries = await dVPNService.getCountries(deviceToken);
       console.log("countries: ", countries);
-      if (countries.length === 0) return res.status(404).json({ error: 'No countries found' });
+      if (countries.data.length === 0) return res.status(404).json({ error: 'No countries found' });
 
       // find cities
-      const firstCountry = countries[0];
+      const firstCountry = countries.data[0];
       const cities = await dVPNService.getCities(firstCountry.id, deviceToken);
       console.log("cities: ", cities);
-      if (cities.length === 0) return res.status(404).json({ error: 'No cities found' });
+      if (cities.data.length === 0) return res.status(404).json({ error: 'No cities found' });
 
       // find servers
-      const firstCity = cities[0];
+      const firstCity = cities.data[0];
       const servers = await dVPNService.getServers(deviceToken, firstCity.id);
       console.log("servers: ", servers);
-      if (servers.length === 0) return res.status(404).json({ error: 'No servers found' });
+      if (servers.data.length === 0) return res.status(404).json({ error: 'No servers found' });
 
-      const firstServer = servers[0];
+      const firstServer = servers.data[0];
       const credentials = await dVPNService.createServerCredentials(deviceToken, firstServer.id);
       console.log("credentials: ", credentials);
 
-      const configText = dVPNService.buildWireGuardConf(credentials);
+      const configText = dVPNService.buildWireGuardConf(credentials.data);
       return res.json({
         config: configText,
         raw: credentials,
         city: firstCity.name,
-        server: servers[0].hostname,
+        server: firstServer.name,
       });
     } catch (err) {
       console.error(err?.response?.data || err);
-      res.status(500).json({ error: 'Failed to get WireGuard configuration' });
+      res.status(500).json({ error: 'Failed to get VPN configuration' });
     }
   });
 
