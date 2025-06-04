@@ -71,9 +71,9 @@ export class DVPNService {
     const privateKey = data.private_key || '';
     const address = data.address || '10.0.0.2/32';
     const dns = data.dns || '1.1.1.1';
-  
+
     const serverPublicKey = data.server_public_key || '';
-  
+
     let endpoint = '';
     if (data.remote_url) {
       endpoint = data.remote_url.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
