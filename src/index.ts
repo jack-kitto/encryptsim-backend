@@ -40,34 +40,131 @@ async function main() {
   const topupHandler = new TopupHandler(db, solanaService, airaloWrapper, logger);
 
   // === DVPN HANDLER ===
-  app.get('/vpn/active', async (req, res) => {
+
+  // Create device
+  app.get('/vpn/create-device', async (req, res) => {
     try {
       // create device
       const deviceInfo = await dVPNService.createDevice();
       console.log("deviceInfo: ", deviceInfo);
 
+      return res.json({
+        data: deviceInfo.data,
+      });
+    } catch (err) {
+      console.error(err?.response?.data || err);
+      res.status(500).json({ error: 'Failed to create device' });
+    }
+  });
+
+  // Get countries
+  app.get('/vpn/countries/:deviceToken', async (req, res) => {
+    try {
+      const { deviceToken } = req.params;
+
       // find countries
-      const deviceToken = deviceInfo.data.token;
-      console.log("deviceToken: ", deviceToken);
       const countries = await dVPNService.getCountries(deviceToken);
       console.log("countries: ", countries);
       if (countries.data.length === 0) return res.status(404).json({ error: 'No countries found' });
 
+      return res.json({
+        data: countries.data,
+      });
+    } catch (err) {
+      console.error(err?.response?.data || err);
+      res.status(500).json({ error: 'Failed to get countries' });
+    }
+  });
+
+  // Get cities
+  // Route: /vpn/cities/:countryId?deviceToken=abc123
+  app.get('/vpn/cities/:countryId', async (req, res) => {
+    try {
+      const { countryId } = req.params;
+      const { deviceToken } = req.query;
+
+      if (!deviceToken) return res.status(400).json({ error: 'Missing deviceToken' });
+
+      const cities = await dVPNService.getCities(deviceToken as string, countryId);
+      console.log("cities: ", cities);
+
+      if (cities.data.length === 0)
+        return res.status(404).json({ error: 'No cities found' });
+
+      return res.json({ data: cities.data });
+    } catch (err) {
+      console.error(err?.response?.data || err);
+      res.status(500).json({ error: 'Failed to get cities' });
+    }
+  });
+
+  // Get servers
+  // Route: /vpn/servers/:cityId?deviceToken=abc123
+  app.get('/vpn/servers/:cityId', async (req, res) => {
+    try {
+      const { cityId } = req.params;
+      const { deviceToken } = req.query;
+
+      if (!deviceToken) return res.status(400).json({ error: 'Missing deviceToken' });
+
+      // find servers
+      const servers = await dVPNService.getServers(deviceToken as string, cityId);
+      console.log("servers: ", servers);
+      if (servers.data.length === 0) return res.status(404).json({ error: 'No servers found' });
+
+      return res.json({ data: servers.data });
+    } catch (err) {
+      console.error(err?.response?.data || err);
+      res.status(500).json({ error: 'Failed to get cities' });
+    }
+  });
+
+  // Create server credentials
+  // Route: /vpn/credentials/:serverId?deviceToken=abc123
+  app.get('/vpn/create-credentials/:serverId', async (req, res) => {
+    try {
+      const { serverId } = req.params;
+      const { deviceToken } = req.query;
+
+      if (!deviceToken) return res.status(400).json({ error: 'Missing deviceToken' });
+
+      const credentials = await dVPNService.createServerCredentials(deviceToken as string, serverId);
+      console.log("credentials: ", credentials);
+
+      const configText = dVPNService.buildWireGuardConf(credentials.data);
+      return res.json({
+        credentials: credentials,
+        config: configText,
+      });
+    } catch (err) {
+      console.error(err?.response?.data || err);
+      res.status(500).json({ error: 'Failed to get cities' });
+    }
+  });
+
+  // Get all config to active VPN
+  app.get('/vpn/active', async (req, res) => {
+    try {
+      // create device
+      const deviceInfo = await dVPNService.createDevice();
+
+      // find countries
+      const deviceToken = deviceInfo.data.token;
+      const countries = await dVPNService.getCountries(deviceToken);
+      if (countries.data.length === 0) return res.status(404).json({ error: 'No countries found' });
+
       // find cities
       const randomCountry = countries.data[Math.floor(Math.random() * countries.data.length)];
-      const cities = await dVPNService.getCities(randomCountry.id, deviceToken);
-      console.log("cities: ", cities);
+      const cities = await dVPNService.getCities(deviceToken, randomCountry.id);
       if (cities.data.length === 0) return res.status(404).json({ error: 'No cities found' });
 
       // find servers
       const randomCity = cities.data[Math.floor(Math.random() * cities.data.length)];
       const servers = await dVPNService.getServers(deviceToken, randomCity.id);
-      console.log("servers: ", servers);
       if (servers.data.length === 0) return res.status(404).json({ error: 'No servers found' });
 
       const randomServer = servers.data[Math.floor(Math.random() * servers.data.length)];
       const credentials = await dVPNService.createServerCredentials(deviceToken, randomServer.id);
-      console.log("credentials: ", credentials);
 
       const configText = dVPNService.buildWireGuardConf(credentials.data);
       return res.json({

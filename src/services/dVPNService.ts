@@ -40,7 +40,7 @@ export class DVPNService {
     return res.data;
   }
 
-  async getCities(countryId: string, deviceToken: string) {
+  async getCities(deviceToken: string, countryId: string) {
     const res = await axios.get(`${DVPN_BASE_URL}/country/${countryId}/city`, {
       headers: {
         'x-device-token': deviceToken,
