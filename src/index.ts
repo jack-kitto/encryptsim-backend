@@ -44,37 +44,37 @@ async function main() {
     try {
       // create device
       const deviceInfo = await dVPNService.createDevice();
-      console.log("deviceInfo: ",deviceInfo);
+      console.log("deviceInfo: ", deviceInfo);
 
       // find countries
       const deviceToken = deviceInfo.data.token;
-      console.log("deviceToken: ",deviceToken);
+      console.log("deviceToken: ", deviceToken);
       const countries = await dVPNService.getCountries(deviceToken);
       console.log("countries: ", countries);
       if (countries.data.length === 0) return res.status(404).json({ error: 'No countries found' });
 
       // find cities
-      const firstCountry = countries.data[0];
-      const cities = await dVPNService.getCities(firstCountry.id, deviceToken);
+      const randomCountry = countries.data[Math.floor(Math.random() * countries.data.length)];
+      const cities = await dVPNService.getCities(randomCountry.id, deviceToken);
       console.log("cities: ", cities);
       if (cities.data.length === 0) return res.status(404).json({ error: 'No cities found' });
 
       // find servers
-      const firstCity = cities.data[0];
-      const servers = await dVPNService.getServers(deviceToken, firstCity.id);
+      const randomCity = cities.data[Math.floor(Math.random() * cities.data.length)];
+      const servers = await dVPNService.getServers(deviceToken, randomCity.id);
       console.log("servers: ", servers);
       if (servers.data.length === 0) return res.status(404).json({ error: 'No servers found' });
 
-      const firstServer = servers.data[0];
-      const credentials = await dVPNService.createServerCredentials(deviceToken, firstServer.id);
+      const randomServer = servers.data[Math.floor(Math.random() * servers.data.length)];
+      const credentials = await dVPNService.createServerCredentials(deviceToken, randomServer.id);
       console.log("credentials: ", credentials);
 
       const configText = dVPNService.buildWireGuardConf(credentials.data);
       return res.json({
         config: configText,
         raw: credentials,
-        city: firstCity.name,
-        server: firstServer.name,
+        city: randomCity.name,
+        server: randomServer.name,
       });
     } catch (err) {
       console.error(err?.response?.data || err);
