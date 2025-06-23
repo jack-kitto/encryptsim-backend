@@ -42,7 +42,7 @@ async function main() {
   // === DVPN HANDLER ===
 
   // Create device
-  app.get('/vpn/create-device', async (req, res) => {
+  app.post('/vpn/create-device', async (req, res) => {
     try {
       // create device
       const deviceInfo = await dVPNService.createDevice();
@@ -121,7 +121,7 @@ async function main() {
 
   // Create server credentials
   // Route: /vpn/credentials/:serverId?deviceToken=abc123
-  app.get('/vpn/create-credentials/:serverId', async (req, res) => {
+  app.post('/vpn/create-credentials/:serverId', async (req, res) => {
     try {
       const { serverId } = req.params;
       const { deviceToken } = req.query;
@@ -143,7 +143,7 @@ async function main() {
   });
 
   // Get all config to active VPN
-  app.get('/vpn/active', async (req, res) => {
+  app.post('/vpn/active', async (req, res) => {
     try {
       // create device
       const deviceInfo = await dVPNService.createDevice();
@@ -168,6 +168,7 @@ async function main() {
 
       const configText = dVPNService.buildWireGuardConf(credentials.data);
       return res.json({
+        deviceToken: deviceToken,
         config: configText,
         raw: credentials,
         city: randomCity.name,
