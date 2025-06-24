@@ -120,7 +120,7 @@ async function main() {
   });
 
   // Create server credentials
-  // Route: /vpn/credentials/:serverId?deviceToken=abc123
+  // Route: /vpn/create-credentials/:serverId?deviceToken=abc123
   app.post('/vpn/create-credentials/:serverId', async (req, res) => {
     try {
       const { serverId } = req.params;
