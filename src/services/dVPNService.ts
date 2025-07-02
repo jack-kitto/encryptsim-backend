@@ -67,6 +67,37 @@ export class DVPNService {
     return res.data;
   }
 
+  decodeCredentialsPayload(payload: string) {
+    const buffer = Buffer.from(payload, 'base64');
+
+    if (buffer.length !== 58) {
+      throw new Error('Payload must be exactly 58 bytes');
+    }
+
+    // IP Address: bytes 0-3
+    const ipAddress = `${buffer[0]}.${buffer[1]}.${buffer[2]}.${buffer[3]}/32`;
+
+    // Host: bytes 20-23
+    const host = `${buffer[20]}.${buffer[21]}.${buffer[22]}.${buffer[23]}`;
+
+    // Listen Port: bytes 24-25, Big Endian UInt16
+    const listenPort = buffer.readUInt16BE(24);
+
+    // Endpoint
+    const endpoint = `${host}:${listenPort}`;
+
+    // Peer Public Key: bytes 26-57
+    const peerPubKey = buffer.slice(26, 58).toString('base64');
+
+    return {
+      ipAddress,
+      host,
+      listenPort,
+      endpoint,
+      peerPubKey,
+    };
+  }
+
   buildWireGuardConf(data: any) {
     const privateKey = data.private_key || '';
     const address = data.address || '10.0.0.2/32';

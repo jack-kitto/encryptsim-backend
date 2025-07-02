@@ -166,6 +166,11 @@ async function main() {
       const randomServer = servers.data[Math.floor(Math.random() * servers.data.length)];
       const credentials = await dVPNService.createServerCredentials(deviceToken, randomServer.id);
 
+      const credentialsPayload = credentials.data.payload;
+
+      const decodeData = dVPNService.decodeCredentialsPayload(credentialsPayload);
+      console.log("decodeData");
+
       const configText = dVPNService.buildWireGuardConf(credentials.data);
       return res.json({
         deviceToken: deviceToken,
