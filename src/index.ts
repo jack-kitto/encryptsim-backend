@@ -167,6 +167,7 @@ async function main() {
       const credentials = await dVPNService.createServerCredentials(deviceToken, randomServer.id);
 
       const configWireGuard = dVPNService.buildWireGuardConf(credentials.data);
+      console.log("configWireGuard: ",configWireGuard);
       return res.json({
         deviceToken: deviceToken,
         raw: credentials,

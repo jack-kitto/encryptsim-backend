@@ -103,13 +103,11 @@ export class DVPNService {
     const dns = data.dns || '1.1.1.1';
 
     const decodePayloadData = this.decodeCredentialsPayload(data.payload);
-    console.log("decodePayloadData: ", decodePayloadData);
 
     return {
       Interface: {
         PrivateKey: privateKey,
         Address: decodePayloadData.ipAddress,
-        ListenPort: decodePayloadData.listenPort,
         DNS: dns,
       },
       Peer: {
