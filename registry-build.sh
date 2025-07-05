@@ -28,6 +28,28 @@ configure_mode() {
   esac
 }
 
+# Function to display help
+show_help() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+  --build=MODE     Build and deploy container image
+                   MODE can be 'prod' or 'test'
+  --deploy=MODE    Deploy existing container image without building
+                   MODE can be 'prod' or 'test'
+  --help, -h       Show this help message
+
+EXAMPLES:
+  $0 --build=prod      Build and deploy to prod (idx-esim-backend-09657482)
+  $0 --build=test      Build and deploy to test (encrypt-sim-test)
+  $0 --deploy=prod     Deploy existing prod image without building
+  $0 --deploy=test     Deploy existing test image without building
+  $0                   Deploy with default settings (latest image)
+
+EOF
+}
+
 # Flag to control building the image
 BUILD_IMAGE=false
 BUILD_MODE=""
@@ -44,6 +66,10 @@ do
     --deploy=*)
     BUILD_MODE="${arg#*=}"
     shift # Remove --deploy from processing
+    ;;
+    --help|-h)
+    show_help
+    exit 0
     ;;
     *)
     # Ignore other arguments for now or add more cases later
