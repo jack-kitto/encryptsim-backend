@@ -9,6 +9,25 @@ REGION="us-west1"
 PORT="8080"
 ENV_FILE=".env"
 
+# Function to configure deployment settings based on mode
+configure_mode() {
+  local mode=$1
+  case $mode in
+    prod)
+      IMAGE_TAG="us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:prod-latest"
+      SERVICE_NAME="idx-esim-backend-09657482"
+      ;;
+    test)
+      IMAGE_TAG="us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:test-latest"
+      SERVICE_NAME="encrypt-sim-test"
+      ;;
+    *)
+      echo "Invalid mode: $mode. Use 'prod' or 'test'."
+      exit 1
+      ;;
+  esac
+}
+
 # Flag to control building the image
 BUILD_IMAGE=false
 BUILD_MODE=""
@@ -17,14 +36,14 @@ BUILD_MODE=""
 for arg in "$@"
 do
   case $arg in
-    --build)
-    BUILD_IMAGE=true
-    shift # Remove --build from processing
-    ;;
     --build=*)
     BUILD_IMAGE=true
     BUILD_MODE="${arg#*=}"
     shift # Remove --build from processing
+    ;;
+    --deploy=*)
+    BUILD_MODE="${arg#*=}"
+    shift # Remove --deploy from processing
     ;;
     *)
     # Ignore other arguments for now or add more cases later
@@ -32,30 +51,16 @@ do
   esac
 done
 
+# Configure deployment settings based on mode
+if [ -n "$BUILD_MODE" ]; then
+  configure_mode "$BUILD_MODE"
+fi
+
 # Conditionally build and push the container image
 if [ "$BUILD_IMAGE" = true ]; then
   if [ -n "$BUILD_MODE" ]; then
-    case $BUILD_MODE in
-      prod)
-        echo "Building and pushing container image for prod..."
-        PROD_TAG="us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:prod-latest"
-        echo $PROD_TAG
-        gcloud builds submit --tag "${PROD_TAG}"
-        IMAGE_TAG="${PROD_TAG}"
-        SERVICE_NAME="idx-esim-backend-09657482"
-        ;;
-      test)
-        echo "Building and pushing container image for test..."
-        TEST_TAG="us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:test-latest"
-        gcloud builds submit --tag "${TEST_TAG}"
-        IMAGE_TAG="${TEST_TAG}"
-        SERVICE_NAME="encrypt-sim-test"
-        ;;
-      *)
-        echo "Invalid build mode: $BUILD_MODE. Use 'prod' or 'test'."
-        exit 1
-        ;;
-    esac
+    echo "Building and pushing container image for $BUILD_MODE..."
+    gcloud builds submit --tag "${IMAGE_TAG}"
   else
     echo "Building and pushing container image..."
     gcloud builds submit --tag "${IMAGE_TAG}"
