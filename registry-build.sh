@@ -1,5 +1,7 @@
 #!/bin/bash
 
+gcloud config set project esim-a3042
+
 # Define the target image tag
 IMAGE_TAG="us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:latest"
 SERVICE_NAME="idx-esim-backend-09657482"
@@ -9,6 +11,7 @@ ENV_FILE=".env"
 
 # Flag to control building the image
 BUILD_IMAGE=false
+BUILD_MODE=""
 
 # Parse command-line arguments
 for arg in "$@"
@@ -16,6 +19,11 @@ do
   case $arg in
     --build)
     BUILD_IMAGE=true
+    shift # Remove --build from processing
+    ;;
+    --build=*)
+    BUILD_IMAGE=true
+    BUILD_MODE="${arg#*=}"
     shift # Remove --build from processing
     ;;
     *)
@@ -26,8 +34,32 @@ done
 
 # Conditionally build and push the container image
 if [ "$BUILD_IMAGE" = true ]; then
-  echo "Building and pushing container image..."
-  gcloud builds submit --tag "${IMAGE_TAG}"
+  if [ -n "$BUILD_MODE" ]; then
+    case $BUILD_MODE in
+      prod)
+        echo "Building and pushing container image for prod..."
+        PROD_TAG="us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:prod-latest"
+        echo $PROD_TAG
+        gcloud builds submit --tag "${PROD_TAG}"
+        IMAGE_TAG="${PROD_TAG}"
+        SERVICE_NAME="idx-esim-backend-09657482"
+        ;;
+      test)
+        echo "Building and pushing container image for test..."
+        TEST_TAG="us-west1-docker.pkg.dev/esim-a3042/cloud-run-source-deploy/idx-esim-backend-09657482:test-latest"
+        gcloud builds submit --tag "${TEST_TAG}"
+        IMAGE_TAG="${TEST_TAG}"
+        SERVICE_NAME="encrypt-sim-test"
+        ;;
+      *)
+        echo "Invalid build mode: $BUILD_MODE. Use 'prod' or 'test'."
+        exit 1
+        ;;
+    esac
+  else
+    echo "Building and pushing container image..."
+    gcloud builds submit --tag "${IMAGE_TAG}"
+  fi
 else
   echo "Skipping container image build (use --build flag to enable)."
 fi
