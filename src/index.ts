@@ -132,6 +132,7 @@ async function main() {
       logger.logINFO(`credentials: ${credentials}`);
 
       const configText = dVPNService.buildWireGuardConf(credentials.data);
+      logger.logINFO(`configText: ${configText}`);
       return res.json({
         credentials: credentials,
         config: configText,
