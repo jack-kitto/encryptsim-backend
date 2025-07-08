@@ -46,13 +46,13 @@ async function main() {
     try {
       // create device
       const deviceInfo = await dVPNService.createDevice();
-      console.log("deviceInfo: ", deviceInfo);
+      logger.logINFO(`deviceInfo: ${deviceInfo}`);
 
       return res.json({
         data: deviceInfo.data,
       });
     } catch (err) {
-      console.error(err?.response?.data || err);
+      logger.logERROR(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to create device' });
     }
   });
@@ -64,14 +64,14 @@ async function main() {
 
       // find countries
       const countries = await dVPNService.getCountries(deviceToken);
-      console.log("countries: ", countries);
+      logger.logINFO(`countries: ${countries}`);
       if (countries.data.length === 0) return res.status(404).json({ error: 'No countries found' });
 
       return res.json({
         data: countries.data,
       });
     } catch (err) {
-      console.error(err?.response?.data || err);
+      logger.logINFO(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get countries' });
     }
   });
@@ -86,14 +86,14 @@ async function main() {
       if (!deviceToken) return res.status(400).json({ error: 'Missing deviceToken' });
 
       const cities = await dVPNService.getCities(deviceToken as string, countryId);
-      console.log("cities: ", cities);
+      logger.logINFO(`cities: ${cities}`);
 
       if (cities.data.length === 0)
         return res.status(404).json({ error: 'No cities found' });
 
       return res.json({ data: cities.data });
     } catch (err) {
-      console.error(err?.response?.data || err);
+      logger.logINFO(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get cities' });
     }
   });
@@ -109,12 +109,12 @@ async function main() {
 
       // find servers
       const servers = await dVPNService.getServers(deviceToken as string, cityId);
-      console.log("servers: ", servers);
+      logger.logINFO(`servers: ${servers}`);
       if (servers.data.length === 0) return res.status(404).json({ error: 'No servers found' });
 
       return res.json({ data: servers.data });
     } catch (err) {
-      console.error(err?.response?.data || err);
+      logger.logINFO(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get cities' });
     }
   });
@@ -129,7 +129,7 @@ async function main() {
       if (!deviceToken) return res.status(400).json({ error: 'Missing deviceToken' });
 
       const credentials = await dVPNService.createServerCredentials(deviceToken as string, serverId);
-      console.log("credentials: ", credentials);
+      logger.logINFO(`credentials: ${credentials}`);
 
       const configText = dVPNService.buildWireGuardConf(credentials.data);
       return res.json({
@@ -137,7 +137,7 @@ async function main() {
         config: configText,
       });
     } catch (err) {
-      console.error(err?.response?.data || err);
+      logger.logINFO(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get cities' });
     }
   });
@@ -167,14 +167,14 @@ async function main() {
       const credentials = await dVPNService.createServerCredentials(deviceToken, randomServer.id);
 
       const configWireGuard = dVPNService.buildWireGuardConf(credentials.data);
-      console.log("configWireGuard: ",configWireGuard);
+      logger.logINFO(`configWireGuard: ${configWireGuard}`);
       return res.json({
         deviceToken: deviceToken,
         raw: credentials,
         configWireGuard: configWireGuard,
       });
     } catch (err) {
-      console.error(err?.response?.data || err);
+      logger.logERROR(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get VPN configuration' });
     }
   });
