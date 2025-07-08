@@ -71,7 +71,7 @@ async function main() {
         data: countries.data,
       });
     } catch (err) {
-      logger.logINFO(err?.response?.data || err);
+      logger.logERROR(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get countries' });
     }
   });
@@ -93,7 +93,7 @@ async function main() {
 
       return res.json({ data: cities.data });
     } catch (err) {
-      logger.logINFO(err?.response?.data || err);
+      logger.logERROR(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get cities' });
     }
   });
@@ -114,7 +114,7 @@ async function main() {
 
       return res.json({ data: servers.data });
     } catch (err) {
-      logger.logINFO(err?.response?.data || err);
+      logger.logERROR(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get cities' });
     }
   });
@@ -133,6 +133,7 @@ async function main() {
 
       const configText = dVPNService.buildWireGuardConf(credentials.data);
       logger.logINFO(`configText: ${configText}`);
+
       return res.json({
         credentials: credentials,
         config: configText,
