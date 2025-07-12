@@ -46,7 +46,7 @@ async function main() {
     try {
       // create device
       const deviceInfo = await dVPNService.createDevice();
-      logger.logINFO(`deviceInfo: ${deviceInfo}`);
+      logger.logINFO(`deviceInfo: ${JSON.stringify(deviceInfo)}`);
 
       return res.json({
         data: deviceInfo.data,
@@ -64,7 +64,7 @@ async function main() {
 
       // find countries
       const countries = await dVPNService.getCountries(deviceToken);
-      logger.logINFO(`countries: ${countries}`);
+      logger.logINFO(`countries: ${JSON.stringify(countries)}`);
       if (countries.data.length === 0) return res.status(404).json({ error: 'No countries found' });
 
       return res.json({
@@ -86,7 +86,7 @@ async function main() {
       if (!deviceToken) return res.status(400).json({ error: 'Missing deviceToken' });
 
       const cities = await dVPNService.getCities(deviceToken as string, countryId);
-      logger.logINFO(`cities: ${cities}`);
+      logger.logINFO(`cities: ${JSON.stringify(cities)}`);
 
       if (cities.data.length === 0)
         return res.status(404).json({ error: 'No cities found' });
@@ -109,7 +109,7 @@ async function main() {
 
       // find servers
       const servers = await dVPNService.getServers(deviceToken as string, cityId);
-      logger.logINFO(`servers: ${servers}`);
+      logger.logINFO(`servers: ${JSON.stringify(servers)}`);
       if (servers.data.length === 0) return res.status(404).json({ error: 'No servers found' });
 
       return res.json({ data: servers.data });
@@ -129,17 +129,17 @@ async function main() {
       if (!deviceToken) return res.status(400).json({ error: 'Missing deviceToken' });
 
       const credentials = await dVPNService.createServerCredentials(deviceToken as string, serverId);
-      logger.logINFO(`credentials: ${credentials}`);
+      logger.logINFO(`credentials: ${JSON.stringify(credentials)}`);
 
       const configText = dVPNService.buildWireGuardConf(credentials.data);
-      logger.logINFO(`configText: ${configText}`);
+      logger.logINFO(`configText: ${JSON.stringify(configText)}`);
 
       return res.json({
         credentials: credentials,
         config: configText,
       });
     } catch (err) {
-      logger.logINFO(err?.response?.data || err);
+      logger.logERROR(err?.response?.data || err);
       res.status(500).json({ error: 'Failed to get cities' });
     }
   });
@@ -169,7 +169,7 @@ async function main() {
       const credentials = await dVPNService.createServerCredentials(deviceToken, randomServer.id);
 
       const configWireGuard = dVPNService.buildWireGuardConf(credentials.data);
-      logger.logINFO(`configWireGuard: ${configWireGuard}`);
+      logger.logINFO(`configWireGuard: ${JSON.stringify(configWireGuard)}`);
       return res.json({
         deviceToken: deviceToken,
         raw: credentials,
