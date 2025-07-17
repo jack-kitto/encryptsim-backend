@@ -30,8 +30,8 @@ export async function accessSecretValue(secretName: string, versionId = 'latest'
 
 export async function initializeFirebase(): Promise<admin.database.Database> {
   // Initialize Firebase Admin SDK
-  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL
-  if (admin.apps.length === 0){
+  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL!
+  if (admin.apps.length === 0) {
     // Fetch the service account using the async function
     const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
 
@@ -57,7 +57,7 @@ export class DBHandler {
   public async getPaymentProfile(ppPublicKey: string): Promise<any> {
     const ppSnapshot = await this.db.ref(`/payment_profiles/${ppPublicKey}`).once('value');
     const pp = ppSnapshot.val()
-  
+
     return pp
   }
 
@@ -65,13 +65,13 @@ export class DBHandler {
     const ppRef = this.db.ref(`/payment_profiles/${ppPublicKey}`);
     const ppSnapshot = await ppRef.once('value');
     const pp = ppSnapshot.val();
-    
+
     let orderIds: string[] = [];
 
     if (pp && pp.orderIds) {
       orderIds = pp.orderIds;
     }
-    
+
     orderIds.push(order_id);
 
     await ppRef.update({ orderIds });
