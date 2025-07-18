@@ -6,7 +6,7 @@
   "functions": [
     {
       "source": "./",
-      "runtime": "nodejs18",
+      "runtime": "nodejs22",
       "codebase": "backend",
       "ignore": [
         "node_modules",
