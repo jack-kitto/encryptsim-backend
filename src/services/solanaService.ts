@@ -112,9 +112,9 @@ export class SolanaService {
         console.log(`Attempt ${i + 1} to confirm transaction ${signature} on height ${lastValidBlockHeight}`);
         const status = await this.connection.confirmTransaction(
           {
-              signature: signature,
-              blockhash: blockhash,
-              lastValidBlockHeight: lastValidBlockHeight,
+            signature: signature,
+            blockhash: blockhash,
+            lastValidBlockHeight: lastValidBlockHeight,
           },
           'confirmed'
         );
