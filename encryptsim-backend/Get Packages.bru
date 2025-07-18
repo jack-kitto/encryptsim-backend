@@ -1,0 +1,16 @@
+meta {
+  name: Get Packages
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base}}/packages?type=global&country=US
+  body: none
+  auth: inherit
+}
+
+params:query {
+  type: global
+  country: US
+}
