@@ -1,6 +1,7 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { Logging } from '@google-cloud/logging';
 import admin from "firebase-admin";
+import { env } from './env';
 
 const client = new SecretManagerServiceClient();
 
@@ -82,7 +83,7 @@ export class GCloudLogger {
   private logging: Logging
 
   constructor() {
-    const GCLOUD_PROJ_ID = process.env.GCLOUD_PROJ_ID;
+    const GCLOUD_PROJ_ID = env.GCLOUD_PROJ_ID;
     this.logging = new Logging({
       projectId: GCLOUD_PROJ_ID
     });
