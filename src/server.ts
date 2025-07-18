@@ -5,13 +5,14 @@ import { config } from "dotenv";
 import express, { Request, Response } from "express";
 import { onRequest } from "firebase-functions/https";
 import noCache from "nocache";
-import { database } from "./firebase";
 import { GCloudLogger } from './helper';
 import { OrderHandler } from './order-handler';
 import { AiraloSIMTopup, AiraloWrapper } from './services/airaloService';
 import { DVPNService } from "./services/dVPNService";
 import { SolanaService } from './services/solanaService';
 import { TopupHandler } from './topup-handler';
+import { Database } from "firebase-admin/database";
+import { database } from "./firebase";
 
 config();
 
