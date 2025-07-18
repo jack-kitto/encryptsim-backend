@@ -10,7 +10,7 @@
     ],
     "allowJs": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "moduleDetection": "force",
     "isolatedModules": true,
     "verbatimModuleSyntax": false,
