@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "npm run build && npm run start:dev",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --verbose --config jest.config.json",
-    "build": "tsc",
+    "build": "tsup-node",
     "start": "node dist/src/index.js",
     "start:dev": "./node_modules/.bin/ts-node-dev --respawn --transpile-only src/index.ts"
   },
