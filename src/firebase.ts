@@ -36,7 +36,7 @@ if (!admin.apps.length && 'initializeApp' in admin && typeof admin.initializeApp
   } else {
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
-      databaseURL: process.env.DATABASE_URL ?? 'https://encrypsim-dev-default-rtdb.asia-southeast1.firebasedatabase.app/',
+      databaseURL: process.env.DATABASE_URL
     });
   }
 
