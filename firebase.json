@@ -16,7 +16,7 @@
         "*.local"
       ],
       "predeploy": [
-        "pnpm build"
+        "npm run build"
       ]
     }
   ],
