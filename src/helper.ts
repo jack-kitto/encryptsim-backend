@@ -1,7 +1,6 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { Logging } from '@google-cloud/logging';
 import admin from "firebase-admin";
-import { getEnv } from './env';
 
 const client = new SecretManagerServiceClient();
 
@@ -29,24 +28,24 @@ export async function accessSecretValue(secretName: string, versionId = 'latest'
   return payload
 }
 
-export async function initializeFirebase(): Promise<admin.database.Database> {
-  // Initialize Firebase Admin SDK
-  const firebaseDatabaseUrl: string = process.env.FIREBASE_DB_URL!
-  if (admin.apps.length === 0) {
-    // Fetch the service account using the async function
-    const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
-
-    if (serviceAccount) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount), // Use the fetched service account
-        databaseURL: firebaseDatabaseUrl,
-      });
-    } else {
-      throw new Error('Failed to authenticate Firebase');
-    }
-  }
-  return admin.database(); // Assign the initialized database to the global variable
-}
+// export async function initializeFirebase(): Promise<admin.database.Database> {
+//   // Initialize Firebase Admin SDK
+//   const firebaseDatabaseUrl: string = process.env.DATABASE_URL!
+//   if (admin.apps.length === 0) {
+//     // Fetch the service account using the async function
+//     const serviceAccount = await accessSecretJSON('firebase-admin'); // Use the correct secret name
+//
+//     if (serviceAccount) {
+//       admin.initializeApp({
+//         credential: admin.credential.cert(serviceAccount), // Use the fetched service account
+//         databaseURL: firebaseDatabaseUrl,
+//       });
+//     } else {
+//       throw new Error('Failed to authenticate Firebase');
+//     }
+//   }
+//   return admin.database(); // Assign the initialized database to the global variable
+// }
 
 export class DBHandler {
   private db: admin.database.Database;
@@ -83,7 +82,7 @@ export class GCloudLogger {
   private logging: Logging
 
   constructor() {
-    const GCLOUD_PROJ_ID = getEnv().GCLOUD_PROJ_ID;
+    const GCLOUD_PROJ_ID = process.env.GCLOUD_PROJ_ID;
     this.logging = new Logging({
       projectId: GCLOUD_PROJ_ID
     });
