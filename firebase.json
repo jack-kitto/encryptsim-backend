@@ -5,8 +5,9 @@
   },
   "functions": [
     {
-      "source": "functions",
-      "codebase": "default",
+      "source": "./",
+      "runtime": "nodejs18",
+      "codebase": "backend",
       "ignore": [
         "node_modules",
         ".git",
@@ -15,9 +16,7 @@
         "*.local"
       ],
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
-        "npm --prefix \"$RESOURCE_DIR\" run build"
+        "pnpm build"
       ]
     }
-  ]
 }
