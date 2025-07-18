@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import express, { Request, Response } from "express";
 import { onRequest } from "firebase-functions/https";
 import noCache from "nocache";
-import { env } from "./env";
+import { getEnv } from "./env";
 import { database } from "./firebase";
 import { GCloudLogger } from './helper';
 import { OrderHandler } from './order-handler';
@@ -40,7 +40,7 @@ async function initializeServices() {
   logger = new GCloudLogger();
   solanaService = new SolanaService(logger);
 
-  const useMockAiralo = env.USE_MOCK_AIRALO === 'true'
+  const useMockAiralo = getEnv().USE_MOCK_AIRALO === 'true'
   // const useMockAiralo = true
   airaloWrapper = new AiraloWrapper(database, logger, useMockAiralo);
   await airaloWrapper.initialize();

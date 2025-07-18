@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createEnv } from "@t3-oss/env-core";
 
-export const env = createEnv({
+export const getEnv = () => createEnv({
   server: {
     // Airalo
     AIRALO_CLIENT_ID: z.string(),

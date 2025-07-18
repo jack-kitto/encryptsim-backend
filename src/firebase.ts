@@ -4,7 +4,7 @@ import { getDatabase } from "firebase-admin/database";
 import { getFirestore } from "firebase-admin/firestore";
 import { getFunctions } from "firebase-admin/functions";
 import { getStorage } from "firebase-admin/storage";
-import { env } from "./env";
+import { getEnv } from "./env";
 
 export type { DecodedIdToken } from "firebase-admin/auth";
 export { FieldValue, Timestamp } from "firebase-admin/firestore";
@@ -32,12 +32,12 @@ if (!admin.apps.length && 'initializeApp' in admin && typeof admin.initializeApp
   if (process.env.FUNCTIONS_EMULATOR) {
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
-      databaseURL: `http://localhost:9000?ns=${env.GCLOUD_PROJ_ID}`,
+      databaseURL: `http://localhost:9000?ns=${getEnv().GCLOUD_PROJ_ID}`,
     });
   } else {
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
-      databaseURL: env.FIREBASE_DB_URL,
+      databaseURL: getEnv().FIREBASE_DB_URL,
     });
   }
 
