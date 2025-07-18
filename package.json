@@ -18,6 +18,7 @@
     "setup-env:dev": "infisical export --env dev --path=/server --format=dotenv > ./.env",
     "deploy:dev": "firebase deploy --project encrypsim-dev",
     "start": "node dist/src/index.js",
+    "emulate": "firebase emulators:start --project encrypsim-dev",
     "start:dev": "./node_modules/.bin/ts-node-dev --respawn --transpile-only src/index.ts"
   },
   "author": "Google LLC",
