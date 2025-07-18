@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { MockAiraloService } from './mockAiraloService'
 import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
 import * as admin from "firebase-admin";
 import { accessSecretValue, GCloudLogger } from "../helper";
@@ -67,28 +68,48 @@ export interface ExportedAiraloPackage {
 
 export class AiraloWrapper {
   private db: admin.database.Database;
+  //@ts-ignore
   private airaloService: AiraloService;
   private logger: GCloudLogger
+  private useMock: boolean;
 
-  constructor(db: admin.database.Database, logger) {
+  constructor(
+    db: admin.database.Database,
+    //@ts-ignore
+    logger,
+
+    useMock: boolean = false
+  ) {
     this.db = db; // Receive the initialized db instance
     this.logger = logger;
+    this.useMock = useMock;
   }
 
   public async initialize() {
-    const clientId = process.env.AIRALO_CLIENT_ID;
-    const clientSecret = await accessSecretValue("AIRALO_CLIENT_SECRET");
-    const clientUrl = process.env.AIRALO_CLIENT_URL;
+    const clientId = process.env.AIRALO_CLIENT_ID || "mock_client_id";
+    const clientUrl = process.env.AIRALO_CLIENT_URL!;
 
-    if (!clientId) {
-      throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
+    if (this.useMock) {
+      this.logger.logINFO("Initializing with Mock Airalo Service");
+      //@ts-ignore
+      this.airaloService = new MockAiraloService({
+        baseUrl: clientUrl,
+        clientId,
+        clientSecret: "mock_secret",
+      });
+    } else {
+      const clientSecret = await accessSecretValue("AIRALO_CLIENT_SECRET");
+
+      if (!clientId) {
+        throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
+      }
+
+      this.airaloService = new AiraloService({
+        baseUrl: clientUrl,
+        clientId,
+        clientSecret,
+      });
     }
-
-    this.airaloService = new AiraloService({
-      baseUrl: clientUrl,
-      clientId,
-      clientSecret
-    });
   }
 
   public async placeOrder(
@@ -174,9 +195,9 @@ export class AiraloWrapper {
       const data_json = JSON.stringify(topups);
       const parsed_item = JSON.parse(data_json);
 
-      let cleanedTopupData = [];
+      let cleanedTopupData: AiraloSIMTopup[] = [];
       for (const item of parsed_item.data) {
-        const newObj = {};
+        const newObj: Record<string, any> = {};
         newObj["id"] = item.id;
         newObj["price"] = item.price;
         newObj["amount"] = item.amount;
@@ -186,7 +207,7 @@ export class AiraloWrapper {
         newObj["data"] = item.data;
         newObj["net_price"] = item.net_price;
 
-        cleanedTopupData.push(newObj);
+        cleanedTopupData.push(newObj as AiraloSIMTopup);
       }
       console.log("topups: ", cleanedTopupData);
 
@@ -207,7 +228,7 @@ export class AiraloWrapper {
     const data_json = JSON.stringify(sim)
     console.log(data_json)
     const parsed_sim = JSON.parse(data_json)
-    const new_sim_obj = {};
+    const new_sim_obj: Record<string, any> = {};
 
     new_sim_obj['iccid'] = parsed_sim.data.iccid;
     new_sim_obj['created_at'] = parsed_sim.data.created_at;
@@ -261,7 +282,10 @@ export class AiraloWrapper {
       return cleanedPackageData
     } catch (error) {
       this.logger.logERROR(`Error getting package plans: ${error}`);
-      throw new Error(error.message);
+      if (error instanceof Error)
+        throw new Error(error.message);
+
+      throw new Error("Unknown error occurred");
     }
   }
 }
@@ -269,14 +293,14 @@ export class AiraloWrapper {
 export function parsePackageResponse(packages: AiraloPackage[]): any[] {
   let cleanedPackageData = [];
   for (const item of packages) {
-    let newObj = {};
+    let newObj: Record<string, any> = {};
     const data_json = JSON.stringify(item);
     const parsed_item = JSON.parse(data_json);
     newObj["region"] = parsed_item.slug;
     newObj["operators"] = []
 
     for (const operator of parsed_item.operators) {
-      const newOperator = {};
+      const newOperator: Record<string, any> = {};
       newOperator["id"] = operator.id;
       newOperator["title"] = operator.title;
       newOperator["packages"] = [];
