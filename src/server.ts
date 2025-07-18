@@ -1,20 +1,20 @@
 import bodyParser from "body-parser";
 import compression from "compression";
 import cors from "cors";
+import { config } from "dotenv";
 import express, { Request, Response } from "express";
+import admin from "firebase-admin";
 import { onRequest } from "firebase-functions/https";
 import noCache from "nocache";
-import { config } from "dotenv";
-import admin from "firebase-admin";
-import { GCloudLogger, initializeFirebase } from './helper';
+import { GCloudLogger } from './helper';
 import { OrderHandler } from './order-handler';
 import { AiraloSIMTopup, AiraloWrapper } from './services/airaloService';
 import { DVPNService } from "./services/dVPNService";
 import { SolanaService } from './services/solanaService';
 import { TopupHandler } from './topup-handler';
-import { getDatabase } from "firebase-admin/database";
+import { env } from "./env";
+import { database } from "./firebase";
 
-// Load environment variables
 config();
 
 const app = express();
@@ -24,8 +24,6 @@ app.use(noCache());
 app.use(compression());
 app.use(bodyParser.json());
 
-// Declare db outside the async function so it's accessible later
-let db: admin.database.Database;
 
 interface PaymentProfile {
   publicKey: string;
@@ -39,25 +37,23 @@ let logger: GCloudLogger;
 let orderHandler: OrderHandler;
 let topupHandler: TopupHandler;
 
-// Initialize services
 async function initializeServices() {
-  if (db) return; // Already initialized
-
-  db = getDatabase()
   logger = new GCloudLogger();
   solanaService = new SolanaService(logger);
 
-  airaloWrapper = new AiraloWrapper(db, logger);
+  const useMockAiralo = env.USE_MOCK_AIRALO === 'true'
+  // const useMockAiralo = true
+  airaloWrapper = new AiraloWrapper(database, logger, useMockAiralo);
   await airaloWrapper.initialize();
 
   dVPNService = new DVPNService();
-  orderHandler = new OrderHandler(db, solanaService, airaloWrapper, logger);
-  topupHandler = new TopupHandler(db, solanaService, airaloWrapper, logger);
+  orderHandler = new OrderHandler(database, solanaService, airaloWrapper, logger);
+  topupHandler = new TopupHandler(database, solanaService, airaloWrapper, logger);
 }
 
 app.get("/", (_, res) => {
   res.send(
-    `API is up and running. DEMO_ENV_VAR: ${process.env.DEMO_ENV_VAR ?? "not set"}.`
+    `API is up and running.`
   );
 });
 
@@ -219,7 +215,7 @@ app.post('/create-payment-profile', async (req: Request, res: Response) => {
     const { publicKey, privateKey } = await solanaService.createNewSolanaWallet();
     const paymentProfile: PaymentProfile = { publicKey, privateKey };
 
-    await db.ref(`/payment_profiles/${publicKey}`).set(paymentProfile);
+    await database.ref(`/payment_profiles/${publicKey}`).set(paymentProfile);
 
     return res.status(200).json({ publicKey });
   } catch (error: any) {
@@ -340,7 +336,7 @@ app.post('/error', async (req: Request, res: Response) => {
 
     const timestamp = new Date().toISOString();
     const timestampKey = timestamp.replace(/[^a-zA-Z0-9]/g, '_');
-    await db.ref(`/error_logs/${timestampKey}`).set(errorLog);
+    await database.ref(`/error_logs/${timestampKey}`).set(errorLog);
 
     logger.logINFO(`error logged: ${message}`);
     return res.status(200).send("OK");
