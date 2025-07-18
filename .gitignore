@@ -5,3 +5,6 @@ dist
 .idx
 .vscode
 tsconfig.tsbuildinfo
+database-debug.log
+firebase-debug.log
+firestore-debug.log
