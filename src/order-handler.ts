@@ -29,9 +29,9 @@ export class OrderHandler {
   private logger: GCloudLogger
 
   constructor(
-    db: admin.database.Database, 
-    solanaService: SolanaService, 
-    airaloWrapper: AiraloWrapper, 
+    db: admin.database.Database,
+    solanaService: SolanaService,
+    airaloWrapper: AiraloWrapper,
     logger: GCloudLogger
   ) {
     this.db = db;
@@ -71,7 +71,7 @@ export class OrderHandler {
 
     for (const order of orders) {
       if (order && typeof order === 'object' && 'orderId' in order && 'package_id' in order && 'sim' in order) {
-        const usageData = await this.airaloWrapper.getDataUsage(order.sim.iccid);        
+        const usageData = await this.airaloWrapper.getDataUsage(order.sim.iccid);
         const newObj = {};
         newObj["orderId"] = order.orderId;
         newObj["package_id"] = order.package_id;
