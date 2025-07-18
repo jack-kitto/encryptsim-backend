@@ -35,7 +35,8 @@
     "src",
     "src/**/*.json",
     "jest.d.ts",
-    "./firebase.json"
+    "./firebase.json",
+    ".env"
   ],
   "exclude": [
     "node_modules",
