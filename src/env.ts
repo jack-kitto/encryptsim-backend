@@ -10,8 +10,8 @@ export const env = createEnv({
     USE_MOCK_AIRALO: z.enum(["true", "false"]),
 
     // GCP/Firebase
-    // FIREBASE_DB_URL: z.string().url(),
-    // GCLOUD_PROJ_ID: z.string(),
+    FIREBASE_DB_URL: z.string().url(),
+    GCLOUD_PROJ_ID: z.string(),
 
     // Quiknode
     SOLANA_RPC_URL: z.string().url(),
