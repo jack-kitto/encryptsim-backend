@@ -2,7 +2,7 @@ import { config } from "dotenv";
 import { MockAiraloService } from './mockAiraloService'
 import { AiraloService, AiraloPackage } from "@montarist/airalo-api";
 import * as admin from "firebase-admin";
-import { accessSecretValue, GCloudLogger } from "../helper";
+import { GCloudLogger } from "../helper";
 config();
 
 export interface SimOrder {
@@ -98,7 +98,7 @@ export class AiraloWrapper {
         clientSecret: "mock_secret",
       });
     } else {
-      const clientSecret = await accessSecretValue("AIRALO_CLIENT_SECRET");
+      const clientSecret = process.env.AIRALO_CLIENT_SECRET!
 
       if (!clientId) {
         throw new Error("AIRALO_CLIENT_ID environment variable is not set.");
