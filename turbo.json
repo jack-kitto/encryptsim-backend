@@ -1,0 +1,115 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    ".env",
+    "**/.env.*local"
+  ],
+  "globalEnv": [
+    "AIRALO_CLIENT_ID",
+    "AIRALO_CLIENT_SECRET",
+    "AIRALO_CLIENT_URL",
+    "DVPN_API_KEY",
+    "DVPN_BASE_URL",
+    "SOLANA_MASTER_PK",
+    "SOLANA_RPC_URL",
+    "USE_MOCK_AIRALO"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ],
+      "outputLogs": "new-only",
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env",
+        ".env.local",
+        "src/**"
+      ]
+    },
+    "compile": {
+      "dependsOn": [],
+      "inputs": [
+        "src/**",
+        "tsconfig.json"
+      ],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "src/**",
+        "jest.config.json"
+      ],
+      "outputs": []
+    },
+    "dev": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": false,
+      "persistent": true,
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env",
+        ".env.local",
+        "src/**"
+      ]
+    },
+    "setup-env:dev": {
+      "outputs": [
+        ".env"
+      ],
+      "inputs": [
+        ".env.template"
+      ]
+    },
+    "deploy:dev": {
+      "dependsOn": [
+        "build"
+      ],
+      "inputs": [
+        "dist/**",
+        "firebase.json",
+        "firestore.rules",
+        "firestore.indexes.json"
+      ],
+      "outputs": []
+    },
+    "start": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": false,
+      "inputs": [
+        "dist/src/index.js"
+      ],
+      "outputs": []
+    },
+    "emulate": {
+      "cache": false,
+      "persistent": true,
+      "inputs": [
+        "firebase.json",
+        "firestore.rules",
+        "firestore.indexes.json"
+      ],
+      "outputs": []
+    },
+    "start:dev": {
+      "cache": false,
+      "persistent": true,
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env",
+        ".env.local",
+        "src/**"
+      ]
+    }
+  }
+}
